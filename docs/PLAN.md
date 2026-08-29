@@ -357,28 +357,33 @@ tie-breakers (earlier finish, then lexicographic group ids) keep results stable 
 
 ## Session split — status
 
-**Step 1 is done and committed.** Execution continues in a fresh session, which should start
-at **step 2** below.
+**All 8 steps are done and committed**, across two sessions on the same branch. Nothing is
+outstanding; this section is now a record of how the work was split, not a to-do list.
 
-Already in the repository:
+Session 1 delivered step 1:
 
-- `docs/PLAN.md` — this document, so no other context is needed;
+- `docs/PLAN.md` — this document;
 - `public/sample-timetable.xml` — the uploaded MUNI IS export, bundled as the "Load sample"
   fixture and used by the tests;
 - the Vite + React + TS skeleton: `package.json`, `vite.config.ts` (vitest + jsdom, note it
   imports `defineConfig` from `vitest/config`, not `vite`), `tsconfig.json`, `index.html`
   (with the pre-paint theme script), `src/main.tsx`, a placeholder `src/App.tsx`;
-- `src/styles/theme.css` — **the full token palette is already written**: light and dark,
-  lecture / seminar / clash colours, radii, shadows, spacing. Reuse these tokens rather than
-  introducing new literal colours;
+- `src/styles/theme.css` — the full token palette: light and dark, lecture / seminar / clash
+  colours, radii, shadows, spacing;
 - `src/components/ThemeToggle.tsx` — working dark-mode switch, persisted to `localStorage`;
-- `src/domain/__tests__/sample.ts` — `readSampleXml()` / `parseSampleXml()` helpers. **Use
-  these in the parser tests.** They resolve from `process.cwd()` because `import.meta.url` is
-  an http: URL under jsdom and cannot be converted to a path;
+- `src/domain/__tests__/sample.ts` — `readSampleXml()` / `parseSampleXml()` helpers, resolved
+  from `process.cwd()` since `import.meta.url` is an http: URL under jsdom;
 - `src/domain/__tests__/fixture.test.ts` — 5 smoke tests pinning the fixture's shape.
 
-`npm run test` (5 passing) and `npm run build` are both green, and the app has been rendered
-in Chromium in both themes.
+Session 2 delivered steps 2–8 in order (see Work order and Verification below), landing the
+full domain layer, state store, UI, styling pass, and README on the same branch. Final state:
+**66 tests passing**, `npm run build` clean, and the full 9-point verification list below
+confirmed against the bundled sample in Chromium (light + dark, 1440px and 1024px). One
+finding worth flagging rather than hiding: the bundled sample's `MV008` has exactly one
+seminar group and it collides with `MA012`'s lecture, so the fully-enabled default load
+shows one real seminar-collision badge rather than a clean week — see the README's *"A real
+unavoidable collision"* section. This is the "never fail" design working as intended on real
+data, not a defect; verification item 2 below is annotated accordingly.
 
 ## Work order
 
@@ -407,7 +412,10 @@ in Chromium in both themes.
 - `npm run dev` driven end-to-end with Playwright/Chromium (pre-installed), loading the
   bundled sample, with screenshots confirming:
   1. all 7 subjects listed with correct lecture/seminar splits;
-  2. a default solve produces a seminar-collision-free week;
+  2. a default solve produces a seminar-collision-free week **where one is achievable — on the
+     bundled sample itself, `MV008`'s single forced group collides with `MA012`'s lecture, so
+     the true default shows exactly that one badge; confirmed the app still behaves correctly
+     (shaded, badged, ranked as the least-bad option) rather than forcing a false claim**;
   3. the `IA159` / `MA010` lecture pair renders **shaded and badged, with no error**;
   4. narrowing `LJ601` to groups 01 + 02 restricts the result to exactly those;
   5. deselecting `MA012/01`–`/03` forces group `/04` into the result;
