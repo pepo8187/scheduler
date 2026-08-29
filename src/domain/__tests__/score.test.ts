@@ -104,14 +104,58 @@ describe('computeScore — compactness', () => {
     expect(score.terms.find((t) => t.key === 'compactness')?.cost).toBe(2 * WEIGHTS.compactnessPerDayUsed);
   });
 
-  it('charges for load variance when pushed toward spread (negative), not for day count', () => {
-    const a = event('AA', 'AA', 'lecture', [slot('Po', 480, 570)]); // 90 min
-    const b = event('BB', 'BB', 'lecture', [slot('Út', 480, 660)]); // 180 min
-    const timetable = timetableOf([subject('AA', [a], []), subject('BB', [b], [])]);
+  it('charges for load variance when pushed toward spread (negative)', () => {
+    // Every weekday used, so the unused-weekday term is zero and only variance counts.
+    const days: Array<[Slot['day'], number]> = [
+      ['Po', 90],
+      ['Út', 180],
+      ['St', 90],
+      ['Čt', 90],
+      ['Pá', 90],
+    ];
+    const subjects = days.map(([day, minutes], i) => subject(`S${i}`, [event(`S${i}`, `S${i}`, 'lecture', [slot(day, 480, 480 + minutes)])], []));
+    const timetable = timetableOf(subjects);
     const selection = buildFullSelection(timetable);
     const score = computeScore(timetable, selection, { ...DEFAULT_PREFS, compactness: -1 }, emptyAssignment());
-    // mean=135, variance=(45^2+45^2)/2=2025
-    expect(score.terms.find((t) => t.key === 'compactness')?.cost).toBeCloseTo(2025 * WEIGHTS.compactnessPerVarianceUnit);
+    // mean=108, variance=(18^2*4 + 72^2)/5 = 1296
+    expect(score.terms.find((t) => t.key === 'compactness')?.cost).toBeCloseTo(1296 * WEIGHTS.compactnessVarianceTiebreak);
+  });
+
+  it('prefers using an extra weekday over a lower-variance same-day-count arrangement', () => {
+    // Two ways to place a 3rd class: as its own light day (more days, worse variance)
+    // or piled onto an already-used day (fewer days, better variance). Spread should
+    // still take the extra day — day count is the primary lever, variance a tiebreak.
+    const heavyA = event('AA', 'AA', 'lecture', [slot('Po', 480, 750)]); // 270 min
+    const heavyB = event('BB', 'BB', 'lecture', [slot('Út', 480, 750)]); // 270 min
+    const extraOwnDay = event('CC', 'CC', 'lecture', [slot('St', 480, 510)]); // 30 min, new day
+    const extraPiled = event('DD', 'DD', 'lecture', [slot('Po', 750, 780)]); // 30 min, same day as AA
+
+    const spreadPrefs: Prefs = { ...DEFAULT_PREFS, compactness: -1 };
+    const timetableOwnDay = timetableOf([subject('AA', [heavyA], []), subject('BB', [heavyB], []), subject('CC', [extraOwnDay], [])]);
+    const ownDayScore = computeScore(timetableOwnDay, buildFullSelection(timetableOwnDay), spreadPrefs, emptyAssignment());
+
+    const timetablePiled = timetableOf([subject('AA', [heavyA], []), subject('BB', [heavyB], []), subject('DD', [extraPiled], [])]);
+    const piledScore = computeScore(timetablePiled, buildFullSelection(timetablePiled), spreadPrefs, emptyAssignment());
+
+    expect(ownDayScore.total).toBeLessThan(piledScore.total);
+  });
+
+  it('also charges for leaving weekdays unused when pushed toward spread, unless they are off', () => {
+    const a = event('AA', 'AA', 'lecture', [slot('Po', 480, 570)]);
+    const b = event('BB', 'BB', 'lecture', [slot('Út', 480, 570)]); // same load: zero variance either way
+    const timetable = timetableOf([subject('AA', [a], []), subject('BB', [b], [])]);
+    const selection = buildFullSelection(timetable);
+
+    const twoOfFive = computeScore(timetable, selection, { ...DEFAULT_PREFS, compactness: -1 }, emptyAssignment());
+    expect(twoOfFive.terms.find((t) => t.key === 'compactness')?.cost).toBeCloseTo(3 * WEIGHTS.compactnessPerUnusedWeekday);
+
+    const withThreeDaysOff = computeScore(
+      timetable,
+      selection,
+      { ...DEFAULT_PREFS, compactness: -1, daysOff: ['St', 'Čt', 'Pá'] },
+      emptyAssignment(),
+    );
+    expect(withThreeDaysOff.terms.find((t) => t.key === 'compactness')?.cost).toBeCloseTo(0);
   });
 });
 

@@ -1,5 +1,8 @@
+import { DAY_ORDER } from './format';
 import { findOverlaps, type Overlap } from './overlap';
 import type { Assignment, CourseEvent, Day, Prefs, Score, ScoreTerm, Selection, Slot, Timetable } from './types';
+
+const WEEKDAYS = DAY_ORDER.slice(0, 5);
 
 /**
  * Weight scale: a seminar collision always outranks any comfort preference, and a
@@ -10,7 +13,8 @@ export const WEIGHTS = {
   seminarCollisionPerPair: 100_000,
   droppedLecturePerEvent: 2_000,
   compactnessPerDayUsed: 30,
-  compactnessPerVarianceUnit: 0.05, // variance is in minutes²
+  compactnessPerUnusedWeekday: 30, // spread's mirror of compactnessPerDayUsed: the primary lever
+  compactnessVarianceTiebreak: 0.0005, // variance is in minutes²; a secondary nudge only, never enough to add a day
   gapsPerIdleMinute: 3,
   dayWindowPerMinuteOutside: 4,
   maxPerDayPerExcessClass: 150,
@@ -72,8 +76,22 @@ function compactnessTerm(events: CourseEvent[], prefs: Prefs): ScoreTerm {
   const loads = [...byDay.values()].map((slots) => slots.reduce((sum, s) => sum + (s.end - s.start), 0));
   const mean = loads.reduce((a, b) => a + b, 0) / loads.length;
   const variance = loads.reduce((sum, v) => sum + (v - mean) ** 2, 0) / loads.length;
-  const cost = -prefs.compactness * variance * WEIGHTS.compactnessPerVarianceUnit;
-  return { key: 'compactness', label: 'Compactness', cost, detail: `load variance ${Math.round(variance)} (spread)` };
+
+  // "Spread across the week" is the mirror of cram: primarily, use the days available to
+  // spread into (a day left off is a hard constraint, so it never counts against this —
+  // only weekdays the user hasn't excluded do); secondarily, break ties between
+  // same-day-count arrangements in favour of the more evenly loaded one.
+  const availableWeekdays = WEEKDAYS.filter((d) => !prefs.daysOff.includes(d)).length;
+  const unusedWeekdays = Math.max(0, availableWeekdays - daysUsed);
+
+  const magnitude = -prefs.compactness;
+  const cost = magnitude * (unusedWeekdays * WEIGHTS.compactnessPerUnusedWeekday + variance * WEIGHTS.compactnessVarianceTiebreak);
+  return {
+    key: 'compactness',
+    label: 'Compactness',
+    cost,
+    detail: `load variance ${Math.round(variance)}, ${daysUsed} day(s) used (spread)`,
+  };
 }
 
 function gapMinutesForDay(slots: Slot[], lunchStart: number, lunchEnd: number): number {
