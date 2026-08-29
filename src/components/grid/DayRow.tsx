@@ -1,4 +1,4 @@
-import type { Day } from '../../domain/types';
+import type { Day, HourRulerEntry } from '../../domain/types';
 import EventBlock, { type CollisionKind } from './EventBlock';
 import type { DayBlockInfo } from './gridTypes';
 
@@ -11,6 +11,7 @@ interface DayRowProps {
   day: Day;
   minHour: number;
   maxHour: number;
+  hours: HourRulerEntry[];
   blocks: DayBlockInfo[];
   ghostBlocks: DayBlockInfo[];
 }
@@ -32,7 +33,7 @@ function assignLanes(blocks: DayBlockInfo[]): Array<{ block: DayBlockInfo; lane:
   return placed;
 }
 
-export default function DayRow({ day, minHour, maxHour, blocks, ghostBlocks }: DayRowProps) {
+export default function DayRow({ day, minHour, maxHour, hours, blocks, ghostBlocks }: DayRowProps) {
   const placed = assignLanes(blocks);
   const laneCount = placed.length > 0 ? Math.max(...placed.map((p) => p.lane + 1)) : 1;
   const mainHeight = laneCount * BLOCK_HEIGHT + (laneCount - 1) * BLOCK_GAP;
@@ -40,11 +41,20 @@ export default function DayRow({ day, minHour, maxHour, blocks, ghostBlocks }: D
   const ghostPlaced = assignLanes(ghostBlocks);
   const ghostLaneCount = ghostPlaced.length > 0 ? Math.max(...ghostPlaced.map((p) => p.lane + 1)) : 0;
   const ghostHeight = ghostLaneCount > 0 ? ghostLaneCount * GHOST_HEIGHT + (ghostLaneCount - 1) * GHOST_GAP + 6 : 0;
+  const total = maxHour - minHour;
 
   return (
     <div className="day-row" style={{ height: mainHeight + ghostHeight + 16 }}>
       <div className="day-row__gutter">{day}</div>
       <div className="day-row__track">
+        {hours.map((hour) => (
+          <span
+            key={hour.start}
+            className="day-row__gridline"
+            aria-hidden="true"
+            style={{ left: `${((hour.start - minHour) / total) * 100}%` }}
+          />
+        ))}
         {placed.map(({ block, lane }) => (
           <EventBlock
             key={`${block.event.id}-${block.slot.start}`}

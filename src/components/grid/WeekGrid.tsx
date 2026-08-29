@@ -79,6 +79,7 @@ export default function WeekGrid({ timetable, selection, solution }: WeekGridPro
             day={day}
             minHour={timetable.minHour}
             maxHour={timetable.maxHour}
+            hours={timetable.hours}
             blocks={blocksByDay.get(day) ?? []}
             ghostBlocks={ghostsByDay.get(day) ?? []}
           />

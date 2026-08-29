@@ -49,14 +49,14 @@ export default function EventBlock({
       style={{ left: `${left}%`, width: `${width}%`, top, height }}
       title={`${event.id} ${subjectName}\n${formatMinutes(slot.start)}-${formatMinutes(slot.end)}${teachers ? `\n${teachers}` : ''}${rooms ? `\n${rooms}` : ''}`}
     >
-      {collisionKind && (
-        <span className="event-block__warning" aria-hidden="true">
-          ⚠
-        </span>
-      )}
-      <span className="event-block__code">{event.id}</span>
       {!ghost && (
         <>
+          {collisionKind && (
+            <span className="event-block__warning" aria-hidden="true">
+              ⚠
+            </span>
+          )}
+          <span className="event-block__code">{event.id}</span>
           <span className="event-block__name">{subjectName}</span>
           {teachers && <span className="event-block__teacher">{teachers}</span>}
           {rooms && <span className="event-block__room">{rooms}</span>}
