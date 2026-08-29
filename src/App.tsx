@@ -11,8 +11,17 @@ import ThemeToggle from './components/ThemeToggle';
 import { useScheduler } from './state/schedulerStore';
 
 export default function App() {
-  const { timetable, selection, prefs, dayOffAnalysis, lectureConflicts, lunchAnalysis, solveResult, isSolving } =
-    useScheduler();
+  const {
+    timetable,
+    selection,
+    prefs,
+    dayOffAnalysis,
+    lectureConflicts,
+    lunchAnalysis,
+    solveResult,
+    isSolving,
+    actions,
+  } = useScheduler();
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   useEffect(() => {
@@ -34,14 +43,28 @@ export default function App() {
 
       <div className="app__body">
         <aside className="app__sidebar panel">
-          <h2 className="panel__title">Subjects</h2>
+          <div className="panel__header">
+            <h2 className="panel__title">Subjects</h2>
+            {timetable && (
+              <button type="button" className="button button--ghost" onClick={actions.resetAllSeminars}>
+                Reset seminars
+              </button>
+            )}
+          </div>
           <FileDrop />
           <SubjectList />
         </aside>
 
         <main className="app__main">
           <section className="panel">
-            <h2 className="panel__title">Preferences</h2>
+            <div className="panel__header">
+              <h2 className="panel__title">Preferences</h2>
+              {timetable && (
+                <button type="button" className="button button--ghost" onClick={actions.resetPrefs}>
+                  Reset preferences
+                </button>
+              )}
+            </div>
             {timetable ? (
               <PreferencePanel />
             ) : (

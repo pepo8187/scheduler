@@ -102,6 +102,18 @@
   color: var(--text-muted);
 }
 
+.panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-md);
+  margin-bottom: var(--gap-md);
+}
+
+.panel__header .panel__title {
+  margin: 0;
+}
+
 .panel__title-hint {
   font-weight: 450;
   text-transform: none;
@@ -220,10 +232,19 @@
   transform: scale(0.97);
 }
 
-.chip--ghost {
-  background: transparent;
-  border-color: var(--ghost-outline);
-  color: var(--text-muted);
+.chip--active {
+  background: var(--primary);
+  color: var(--surface);
+  border-color: var(--primary);
+}
+
+.chip--active:hover {
+  background: var(--primary-hover);
+}
+
+.chip--partial {
+  border-color: var(--seminar-accent);
+  border-style: dashed;
 }
 
 /* --- File drop --- */

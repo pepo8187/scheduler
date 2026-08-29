@@ -73,9 +73,11 @@ type Action =
   | { type: 'TOGGLE_LECTURE'; subjectCode: string; lectureId: string }
   | { type: 'TOGGLE_LECTURE_REQUIRED'; subjectCode: string; lectureId: string }
   | { type: 'TOGGLE_SEMINAR'; subjectCode: string; seminarId: string }
-  | { type: 'SELECT_TEACHER_GROUPS'; subjectCode: string; teacherId: string }
+  | { type: 'TOGGLE_TEACHER_GROUPS'; subjectCode: string; teacherId: string }
   | { type: 'ENABLE_ALL_SEMINARS'; subjectCode: string }
   | { type: 'DISABLE_ALL_SEMINARS'; subjectCode: string }
+  | { type: 'RESET_ALL_SEMINARS' }
+  | { type: 'RESET_PREFS' }
   | { type: 'CLEAR' };
 
 function reducer(state: State, action: Action): State {
@@ -160,13 +162,18 @@ function reducer(state: State, action: Action): State {
       };
     }
 
-    case 'SELECT_TEACHER_GROUPS': {
+    case 'TOGGLE_TEACHER_GROUPS': {
       const timetableSubject = state.timetable?.subjects.find((s) => s.code === action.subjectCode);
       const subjectSelection = state.selection[action.subjectCode];
       if (!timetableSubject || !subjectSelection) return state;
-      const seminars = Object.fromEntries(
-        timetableSubject.seminars.map((s) => [s.id, s.teachers.some((t) => t.id === action.teacherId)]),
-      );
+      const teacherSeminarIds = timetableSubject.seminars
+        .filter((s) => s.teachers.some((t) => t.id === action.teacherId))
+        .map((s) => s.id);
+      // Fully selected already -> deselect; otherwise (none or partly enabled) -> select all,
+      // so a subject with several teachers can have any combination of them active at once.
+      const fullySelected = teacherSeminarIds.every((id) => subjectSelection.seminars[id]);
+      const seminars = { ...subjectSelection.seminars };
+      for (const id of teacherSeminarIds) seminars[id] = !fullySelected;
       return { ...state, selection: { ...state.selection, [action.subjectCode]: { ...subjectSelection, seminars } } };
     }
 
@@ -186,6 +193,23 @@ function reducer(state: State, action: Action): State {
       return { ...state, selection: { ...state.selection, [action.subjectCode]: { ...subjectSelection, seminars } } };
     }
 
+    case 'RESET_ALL_SEMINARS': {
+      if (!state.timetable) return state;
+      const selection = { ...state.selection };
+      for (const subject of state.timetable.subjects) {
+        const subjectSelection = selection[subject.code];
+        if (!subjectSelection) continue;
+        selection[subject.code] = {
+          ...subjectSelection,
+          seminars: Object.fromEntries(subject.seminars.map((s) => [s.id, true])),
+        };
+      }
+      return { ...state, selection };
+    }
+
+    case 'RESET_PREFS':
+      return { ...state, prefs: DEFAULT_PREFS };
+
     case 'CLEAR':
       return EMPTY_STATE;
 
@@ -203,9 +227,11 @@ export interface SchedulerActions {
   toggleLecture: (subjectCode: string, lectureId: string) => void;
   toggleLectureRequired: (subjectCode: string, lectureId: string) => void;
   toggleSeminar: (subjectCode: string, seminarId: string) => void;
-  selectTeacherGroups: (subjectCode: string, teacherId: string) => void;
+  toggleTeacherGroups: (subjectCode: string, teacherId: string) => void;
   enableAllSeminars: (subjectCode: string) => void;
   disableAllSeminars: (subjectCode: string) => void;
+  resetAllSeminars: () => void;
+  resetPrefs: () => void;
   clear: () => void;
 }
 
@@ -255,10 +281,12 @@ export function SchedulerProvider({ children }: { children: ReactNode }) {
       toggleLectureRequired: (subjectCode, lectureId) =>
         dispatch({ type: 'TOGGLE_LECTURE_REQUIRED', subjectCode, lectureId }),
       toggleSeminar: (subjectCode, seminarId) => dispatch({ type: 'TOGGLE_SEMINAR', subjectCode, seminarId }),
-      selectTeacherGroups: (subjectCode, teacherId) =>
-        dispatch({ type: 'SELECT_TEACHER_GROUPS', subjectCode, teacherId }),
+      toggleTeacherGroups: (subjectCode, teacherId) =>
+        dispatch({ type: 'TOGGLE_TEACHER_GROUPS', subjectCode, teacherId }),
       enableAllSeminars: (subjectCode) => dispatch({ type: 'ENABLE_ALL_SEMINARS', subjectCode }),
       disableAllSeminars: (subjectCode) => dispatch({ type: 'DISABLE_ALL_SEMINARS', subjectCode }),
+      resetAllSeminars: () => dispatch({ type: 'RESET_ALL_SEMINARS' }),
+      resetPrefs: () => dispatch({ type: 'RESET_PREFS' }),
       clear: () => dispatch({ type: 'CLEAR' }),
     }),
     [],
