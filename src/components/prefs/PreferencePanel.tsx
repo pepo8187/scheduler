@@ -1,6 +1,7 @@
 import { formatMinutes, parseTimeToMinutes } from '../../domain/format';
 import { useScheduler } from '../../state/schedulerStore';
 import DayOffToggles from './DayOffToggles';
+import LunchBreak from './LunchBreak';
 import PresetBar from './PresetBar';
 
 export default function PreferencePanel() {
@@ -74,6 +75,8 @@ export default function PreferencePanel() {
           </label>
         </div>
       </div>
+
+      <LunchBreak />
 
       <div className="pref-block">
         <label className="pref-row">

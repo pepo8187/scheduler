@@ -1,6 +1,7 @@
+import { slotDuringLunch } from './lunch';
 import { eventsOverlap } from './overlap';
 import { computeScore, resolveAssignment } from './score';
-import type { Assignment, CourseEvent, Day, Prefs, Selection, Solution, Timetable } from './types';
+import type { Assignment, CourseEvent, Day, LunchPrefs, Prefs, Selection, Solution, Timetable } from './types';
 
 export interface SolveOptions {
   /** How many best solutions to keep for the alternatives strip. */
@@ -57,15 +58,17 @@ function fixedLectures(timetable: Timetable, selection: Selection, dropped: Set<
   return events;
 }
 
-/** Upfront domain filtering: enabled groups only, minus anything touching a day off. */
-function buildVariables(timetable: Timetable, selection: Selection, daysOff: Day[]): Variable[] {
+/** Upfront domain filtering: enabled groups only, minus anything touching a day off or lunch. */
+function buildVariables(timetable: Timetable, selection: Selection, daysOff: Day[], lunch: LunchPrefs): Variable[] {
   const variables: Variable[] = [];
   for (const subject of timetable.subjects) {
     const subjectSelection = selection[subject.code];
     if (!subjectSelection?.enabled || subject.seminars.length === 0) continue;
 
     const enabledGroups = subject.seminars.filter((s) => subjectSelection.seminars[s.id]);
-    const survivors = enabledGroups.filter((s) => !s.slots.some((slot) => daysOff.includes(slot.day)));
+    const survivors = enabledGroups.filter(
+      (s) => !s.slots.some((slot) => daysOff.includes(slot.day) || slotDuringLunch(slot, lunch)),
+    );
     // Never an empty domain: no usable group means "lecture only", not failure.
     const domain: (string | null)[] = survivors.length > 0 ? survivors.map((s) => s.id) : [null];
     variables.push({ subjectCode: subject.code, domain });
@@ -183,10 +186,13 @@ function randomizedFallback(
  * bounded top-K. The decision space is one variable per enabled subject-with-seminars
  * (which group, or none); ★ lectures and seminar-less subjects are fixed input placed
  * before the search begins, and non-★ lecture drops are derived, not searched (see
- * deriveDroppedLectures). For the documented scale (tens of combinations for a normal
- * semester) this always completes well under the node budget and the result is
- * provably optimal; past the budget it falls back to randomised local search and is
- * labelled "best found — not proven optimal".
+ * deriveDroppedLectures). Groups touching a day off or a lunch block are filtered out of
+ * the domain up front (buildVariables), the same hard-constraint treatment either way — a
+ * subject left with no survivor falls back to "no seminar chosen" rather than failing.
+ * For the documented scale (tens of combinations for a normal semester) this always
+ * completes well under the node budget and the result is provably optimal; past the
+ * budget it falls back to randomised local search and is labelled "best found — not
+ * proven optimal".
  */
 export function solve(timetable: Timetable, selection: Selection, prefs: Prefs, options: SolveOptions = {}): SolveResult {
   const topK = options.topK ?? 10;
@@ -195,7 +201,7 @@ export function solve(timetable: Timetable, selection: Selection, prefs: Prefs, 
 
   const droppedLectures = deriveDroppedLectures(timetable, selection, prefs.daysOff);
   const fixed = fixedLectures(timetable, selection, droppedLectures);
-  const variables = buildVariables(timetable, selection, prefs.daysOff);
+  const variables = buildVariables(timetable, selection, prefs.daysOff, prefs.lunch);
 
   const best: Solution[] = [];
   let nodes = 0;

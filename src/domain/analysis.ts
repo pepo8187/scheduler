@@ -1,6 +1,7 @@
 import { DAY_LABELS, DAY_ORDER } from './format';
+import { slotDuringLunch } from './lunch';
 import { findOverlaps } from './overlap';
-import type { CourseEvent, Day, Selection, Subject, Timetable } from './types';
+import type { CourseEvent, Day, LunchPrefs, Selection, Subject, Timetable } from './types';
 
 /** The five weekdays the day-off toggles apply to. */
 export const TOGGLEABLE_DAYS: Day[] = DAY_ORDER.slice(0, 5);
@@ -100,4 +101,53 @@ export function analyzeAllDaysOff(timetable: Timetable, selection: Selection): R
   const result = {} as Record<Day, DayOffAnalysis>;
   for (const day of TOGGLEABLE_DAYS) result[day] = analyzeDayOff(timetable, selection, day);
   return result;
+}
+
+export interface LunchLectureOverlap {
+  subject: Subject;
+  lecture: CourseEvent;
+  day: Day;
+}
+
+export interface LunchAnalysis {
+  /** Enabled lectures that fall inside their day's lunch window. Informational only — a
+   *  lecture is a given, never dropped or moved to protect lunch. */
+  lectureOverlaps: LunchLectureOverlap[];
+  /** Subjects left with no usable enabled seminar group once lunch is blocked out. */
+  deadSubjects: DeadSubjectWarning[];
+}
+
+/** Whether the currently-configured lunch block leaves anything unresolved: fixed lectures
+ *  sitting inside it, or a subject whose every enabled group overlaps its day's window. */
+export function analyzeLunch(timetable: Timetable, selection: Selection, lunch: LunchPrefs): LunchAnalysis {
+  const lectureOverlaps: LunchLectureOverlap[] = [];
+  const deadSubjects: DeadSubjectWarning[] = [];
+  if (!lunch.enabled) return { lectureOverlaps, deadSubjects };
+
+  for (const subject of timetable.subjects) {
+    const subjectSelection = selection[subject.code];
+    if (!subjectSelection?.enabled) continue;
+
+    for (const lecture of subject.lectures) {
+      if (!subjectSelection.lectures[lecture.id]?.enabled) continue;
+      const overlapDay = lecture.slots.find((slot) => slotDuringLunch(slot, lunch))?.day;
+      if (overlapDay) lectureOverlaps.push({ subject, lecture, day: overlapDay });
+    }
+
+    if (subject.seminars.length === 0) continue;
+    const enabledGroups = subject.seminars.filter((s) => subjectSelection.seminars[s.id]);
+    if (enabledGroups.length === 0) continue; // already lecture-only by explicit user choice
+
+    const survivors = enabledGroups.filter((s) => !s.slots.some((slot) => slotDuringLunch(slot, lunch)));
+    if (survivors.length === 0) {
+      const groupList = enabledGroups.map((s) => s.group ?? s.id).join(', ');
+      const plural = enabledGroups.length > 1;
+      deadSubjects.push({
+        subject,
+        reason: `${plural ? 'groups' : 'group'} ${groupList} ${plural ? 'all overlap' : 'overlaps'} your lunch break`,
+      });
+    }
+  }
+
+  return { lectureOverlaps, deadSubjects };
 }

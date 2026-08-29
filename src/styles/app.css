@@ -606,6 +606,44 @@
   gap: 6px;
 }
 
+.lunch-days {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.lunch-day {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+}
+
+.lunch-day__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.lunch-day__detail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 22px;
+}
+
+.lunch-day__skip {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+}
+
 /* --- Results: alternatives, score, diagnostics --- */
 
 .alternatives-bar {

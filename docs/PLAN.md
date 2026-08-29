@@ -178,11 +178,26 @@ penalised. Useful together with "spread" to prevent one monster day.
 One-click bundles that set the sliders sensibly, as a starting point users then tweak:
 **Cram it in** · **Spread evenly** · **Late riser** · **Long weekend** (Friday off + cram).
 
+### 8. Lunch block (hard constraint, opt-in)
+
+Off by default. Once enabled, it behaves like days off, not like the day-window slider: a
+default *From–Until* applies to every toggleable day, any of the five can override it with
+its own window or opt out entirely ("no lunch block this day"), and any seminar group with a
+slot touching its day's effective window is filtered out of the solver's domain before the
+search runs (`src/domain/lunch.ts`, wired into `buildVariables` in `solver.ts`) — never
+scored, always excluded. A subject left with no surviving group falls back to "no seminar
+chosen" (never a failure) and is reported as a lunch trade-off, mirroring the day-off
+dead-subject warning. A fixed lecture inside the window is left alone (lectures are never
+dropped except for a whole day off) but is still surfaced as an informational note
+(`analyzeLunch` in `analysis.ts`) so the limits of the block are visible, not assumed away.
+
 ### Weights and persistence
 
 Each preference contributes `weight × measure` to a single objective. Weights are tuned so
 that a seminar collision always outranks any comfort preference, and a dropped ★-less lecture
-outranks all comfort preferences but not a collision. The full preference set — plus every
+outranks all comfort preferences but not a collision. Lunch (like days off) sits outside this
+objective entirely — it's a hard filter on the solver's domain, not a weighted term, so it
+has no `WEIGHTS` entry and nothing to tune. The full preference set — plus every
 subject/lecture/seminar selection and the last-loaded XML — persists to `localStorage`, so
 reopening the app restores the exact working state.
 
@@ -296,21 +311,22 @@ scheduler/
       types.ts            # Day, Slot, CourseEvent, Subject, Timetable, Prefs, Solution
       parseTimetable.ts   # XML -> Timetable (DOMParser)
       overlap.ts          # interval overlap + conflict classification (lecture/seminar)
-      analysis.ts         # pre-flight: day blockers, dead subjects, fixed-lecture conflicts
+      analysis.ts         # pre-flight: day/lunch blockers, dead subjects, fixed-lecture conflicts
+      lunch.ts            # effective per-day lunch window + slot-overlaps-lunch check
       score.ts            # objective: one term per preference + breakdown
       solver.ts           # exhaustive DFS w/ MRV + forward checking, top-K results
       presets.ts          # the four preference bundles
       format.ts           # minutes<->"HH:MM", day labels
-      __tests__/          # vitest: parser, overlap, analysis, score, solver (+ fixture)
+      __tests__/          # vitest: parser, overlap, analysis, lunch, score, solver (+ fixture)
     state/
       schedulerStore.tsx  # useReducer + Context, localStorage persistence
     components/
       FileDrop.tsx
       sidebar/SubjectList.tsx  SubjectCard.tsx  TeacherChips.tsx  UnscheduledTray.tsx
-      prefs/PreferencePanel.tsx  DayOffToggles.tsx  PresetBar.tsx
+      prefs/PreferencePanel.tsx  DayOffToggles.tsx  LunchBreak.tsx  PresetBar.tsx
       grid/WeekGrid.tsx  HourRuler.tsx  DayRow.tsx  EventBlock.tsx  Legend.tsx
       ThemeToggle.tsx
-      results/AlternativesBar.tsx  ScoreBreakdown.tsx  DiagnosticsPanel.tsx
+      results/AlternativesBar.tsx  ScoreBreakdown.tsx  DiagnosticsPanel.tsx  GapExplainer.tsx
 ```
 
 Dependencies stay small: `react`, `react-dom`; dev: `vite`, `@vitejs/plugin-react`,
@@ -361,7 +377,8 @@ subjects without seminars are fixed input, placed before the search begins.
 
 Exhaustive depth-first search with:
 
-- **upfront domain filtering** — groups touching a day off are removed before search;
+- **upfront domain filtering** — groups touching a day off, or their day's lunch block if
+  lunch is enabled, are removed before search (same hard-constraint treatment either way);
 - **MRV ordering** — variables with the fewest surviving options first;
 - **forward checking** — after each assignment, prune now-conflicting options of the
   remaining variables; on a domain wipe-out, do not fail — fall back to keeping the

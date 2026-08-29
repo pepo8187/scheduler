@@ -11,7 +11,7 @@ import ThemeToggle from './components/ThemeToggle';
 import { useScheduler } from './state/schedulerStore';
 
 export default function App() {
-  const { timetable, selection, prefs, dayOffAnalysis, lectureConflicts, solveResult } = useScheduler();
+  const { timetable, selection, prefs, dayOffAnalysis, lectureConflicts, lunchAnalysis, solveResult } = useScheduler();
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   useEffect(() => {
@@ -63,6 +63,7 @@ export default function App() {
                 lectureConflicts={lectureConflicts}
                 dayOffAnalysis={dayOffAnalysis}
                 daysOff={prefs.daysOff}
+                lunchAnalysis={lunchAnalysis}
               />
             </section>
           )}

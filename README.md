@@ -23,6 +23,10 @@ how-it-works.
   out, take a day off, avoid early mornings and late evenings, minimise dead time between
   classes, cap classes per day. Four presets (*Cram it in*, *Spread evenly*, *Late riser*,
   *Long weekend*) set them all at once as a starting point.
+- **Can block out lunch, opt-in** — turn it on, set a time, and no seminar group touching that
+  window is ever chosen. Off by default; each of the five weekdays can use the same window,
+  a different one (a later lunch on a day with a long morning), or none at all. This is a
+  hard constraint like a day off, not a scoring nudge — see *Blocking out lunch* below.
 - **Explains itself** — every schedule comes with a full score breakdown, and a day-off toggle
   that would strand a subject explains why and offers one-click fixes (accept lecture-only,
   exclude the subject, or keep the day) instead of silently refusing.
@@ -38,7 +42,7 @@ how-it-works.
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm run test     # unit tests (vitest + jsdom) — 70 tests across parser/overlap/analysis/score/solver
+npm run test     # unit tests (vitest + jsdom) — 90 tests across parser/overlap/analysis/lunch/score/solver
 npm run build    # typecheck + production build
 ```
 
@@ -101,10 +105,27 @@ even though the latter has *less* total idle time.
 `gapBadness()` (`src/domain/score.ts`) models this as a Gamma(shape=2)-shaped curve: it rises
 from zero, peaks at a 2-hour gap, and decays exponentially past it, rescaled so the peak
 itself equals 120 "minutes" — i.e. the worst-case gap costs exactly what a naive per-minute
-model would have charged, and every other length is discounted relative to that. There's no
-special exemption for lunchtime or any other time of day; only a gap's length matters, so a
-midday seminar block is never penalised just for sitting where a fixed lunch window used to
-be.
+model would have charged, and every other length is discounted relative to that. The score
+itself has no special exemption for lunchtime or any other time of day; only a gap's length
+matters. If you specifically want lunch protected, that's the separate opt-in preference
+below — not a scoring nudge, but a hard block.
+
+### Blocking out lunch
+
+**Block out lunch** (off by default) is a hard constraint, the same kind as a day off, just
+scoped to a time window instead of a whole day: turn it on, set a default *From– Until*, and
+no seminar group with a slot touching that window on any of the five weekdays is ever chosen
+— it's filtered out of the solver's search space before the search even starts
+(`src/domain/lunch.ts`, wired into `buildVariables` in `solver.ts`). If narrowing leaves a
+subject with no group that survives, that's reported as a "Lunch trade-off" (the same
+never-fail spirit as a day-off trade-off) rather than silently dropped or left unexplained.
+
+Each weekday can differ: leave a day alone to use the default window, give it its own *From–
+Until* (a later lunch on a day with a long morning), or blacklist it entirely ("no lunch
+block this day") if that day never had a protected lunch to begin with. A fixed lecture that
+happens to sit inside the lunch window is left alone either way — lectures are givens, never
+dropped or moved to protect lunch — but it's still surfaced as an informational note so the
+block's limits are visible rather than assumed away.
 
 `src/domain/solver.ts` searches one variable per enabled subject-with-seminars (which group,
 or none) via MRV-ordered DFS with forward checking, keeping the best 10 by score. Non-★
@@ -145,19 +166,20 @@ src/domain/                     pure TypeScript, no React — unit-testable head
   types.ts                        Day, Slot, CourseEvent, Subject, Timetable, Prefs, Selection, Solution
   parseTimetable.ts                XML -> Timetable
   overlap.ts                       interval overlap + lecture-lecture vs seminar classification
-  analysis.ts                      day-off pre-flight: blockers, drops, dead-subject trade-offs
+  analysis.ts                      day-off & lunch pre-flight: blockers, drops, dead-subject trade-offs
+  lunch.ts                         effective per-day lunch window + slot-overlaps-lunch check
   score.ts                         the objective and its per-term breakdown
   solver.ts                        MRV/forward-checking DFS, top-10, node-budget fallback
   presets.ts                       default prefs + the four one-click bundles
   format.ts                        minutes<->"HH:MM", day labels, slot/teacher/room descriptions
-  __tests__/                       vitest: parser, overlap, analysis, score, solver (+ real-sample fixture)
+  __tests__/                       vitest: parser, overlap, analysis, lunch, score, solver (+ real-sample fixture)
 src/state/schedulerStore.tsx    useReducer + Context; persists xml/selection/prefs to localStorage
 src/components/
   FileDrop.tsx                     drag/drop + "Load sample"
   sidebar/                         SubjectList, SubjectCard, TeacherChips, UnscheduledTray
-  prefs/                           PreferencePanel, DayOffToggles, PresetBar
+  prefs/                           PreferencePanel, DayOffToggles, LunchBreak, PresetBar
   grid/                            WeekGrid, HourRuler, DayRow, EventBlock, Legend
-  results/                         AlternativesBar, ScoreBreakdown, DiagnosticsPanel
+  results/                         AlternativesBar, ScoreBreakdown, DiagnosticsPanel, GapExplainer
   ThemeToggle.tsx
 src/styles/theme.css            every colour, radius and shadow token, light + dark
 src/styles/app.css              layout and every component's styling

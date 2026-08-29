@@ -8,6 +8,11 @@ describe('DEFAULT_PREFS', () => {
     expect(DEFAULT_PREFS.dayWindow).toEqual({ start: 480, end: 1200 });
     expect(DEFAULT_PREFS.maxClassesPerDay).toBeNull();
   });
+
+  it('has lunch blocking off by default, with no per-day overrides', () => {
+    expect(DEFAULT_PREFS.lunch.enabled).toBe(false);
+    expect(DEFAULT_PREFS.lunch.overrides).toEqual({});
+  });
 });
 
 describe('applyPreset', () => {

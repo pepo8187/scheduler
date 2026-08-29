@@ -1,5 +1,12 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNode } from 'react';
-import { analyzeAllDaysOff, findLectureConflicts, type DayOffAnalysis, type LectureConflict } from '../domain/analysis';
+import {
+  analyzeAllDaysOff,
+  analyzeLunch,
+  findLectureConflicts,
+  type DayOffAnalysis,
+  type LectureConflict,
+  type LunchAnalysis,
+} from '../domain/analysis';
 import { parseTimetable } from '../domain/parseTimetable';
 import { applyPreset, DEFAULT_PREFS, type PresetId } from '../domain/presets';
 import { solve, type SolveResult } from '../domain/solver';
@@ -44,7 +51,9 @@ function hydrate(): State {
       fileName: persisted.fileName ?? null,
       timetable: parseTimetable(persisted.xml),
       selection: persisted.selection ?? {},
-      prefs: persisted.prefs ?? DEFAULT_PREFS,
+      // Shallow-merged onto the defaults so a preference added after a user's last visit
+      // (e.g. `lunch`, absent from older persisted state) doesn't come back `undefined`.
+      prefs: { ...DEFAULT_PREFS, ...persisted.prefs },
     };
   } catch {
     return EMPTY_STATE; // corrupt storage or a bad export: start clean rather than crash
@@ -204,6 +213,7 @@ export interface SchedulerContextValue {
   prefs: Prefs;
   dayOffAnalysis: Record<Day, DayOffAnalysis> | null;
   lectureConflicts: LectureConflict[];
+  lunchAnalysis: LunchAnalysis | null;
   solveResult: SolveResult | null;
   actions: SchedulerActions;
 }
@@ -257,6 +267,11 @@ export function SchedulerProvider({ children }: { children: ReactNode }) {
     [state.timetable, state.selection],
   );
 
+  const lunchAnalysis = useMemo(
+    () => (state.timetable ? analyzeLunch(state.timetable, state.selection, state.prefs.lunch) : null),
+    [state.timetable, state.selection, state.prefs.lunch],
+  );
+
   const solveResult = useMemo(
     () => (state.timetable ? solve(state.timetable, state.selection, state.prefs) : null),
     [state.timetable, state.selection, state.prefs],
@@ -270,6 +285,7 @@ export function SchedulerProvider({ children }: { children: ReactNode }) {
     prefs: state.prefs,
     dayOffAnalysis,
     lectureConflicts,
+    lunchAnalysis,
     solveResult,
     actions,
   };

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { analyzeDayOff, findLectureConflicts } from '../analysis';
+import { analyzeDayOff, analyzeLunch, findLectureConflicts } from '../analysis';
 import { parseTimetable } from '../parseTimetable';
-import type { CourseEvent, Slot, Subject, Timetable } from '../types';
+import type { CourseEvent, LunchPrefs, Slot, Subject, Timetable } from '../types';
 import { buildFullSelection } from './selection';
 import { readSampleXml } from './sample';
 
@@ -98,5 +98,73 @@ describe('analyzeDayOff — the Tuesday / Quantum Programming trade-off', () => 
     const analysis = analyzeDayOff(timetable, selection, 'Čt');
     expect(analysis.blockers).toHaveLength(0);
     expect(analysis.deadSubjects).toHaveLength(0);
+  });
+});
+
+function lunch(patch: Partial<LunchPrefs> = {}): LunchPrefs {
+  return { enabled: true, default: { start: 600, end: 660 }, overrides: {}, ...patch };
+}
+
+describe('analyzeLunch', () => {
+  it('reports nothing when lunch is disabled, even if everything would otherwise overlap', () => {
+    const during = event('BB/01', 'BB', 'seminar', [slot('Po', 630, 700)]);
+    const timetable = timetableOf([subject('BB', [], [during])]);
+    const selection = buildFullSelection(timetable);
+
+    const analysis = analyzeLunch(timetable, selection, lunch({ enabled: false }));
+    expect(analysis.lectureOverlaps).toHaveLength(0);
+    expect(analysis.deadSubjects).toHaveLength(0);
+  });
+
+  it('flags a fixed lecture sitting inside the lunch window, informationally', () => {
+    const duringLunch = event('AA', 'AA', 'lecture', [slot('Po', 630, 700)]); // 10:30-11:40
+    const timetable = timetableOf([subject('AA', [duringLunch], [])]);
+    const selection = buildFullSelection(timetable);
+
+    const analysis = analyzeLunch(timetable, selection, lunch());
+    expect(analysis.lectureOverlaps).toHaveLength(1);
+    expect(analysis.lectureOverlaps[0]?.subject.code).toBe('AA');
+    expect(analysis.lectureOverlaps[0]?.day).toBe('Po');
+  });
+
+  it('leaves a subject dead when every enabled group overlaps its day\'s lunch window', () => {
+    const groupA = event('BB/01', 'BB', 'seminar', [slot('Po', 630, 700)]);
+    const groupB = event('BB/02', 'BB', 'seminar', [slot('Út', 620, 650)]); // still inside the default window
+    const timetable = timetableOf([subject('BB', [], [groupA, groupB])]);
+    const selection = buildFullSelection(timetable);
+
+    const analysis = analyzeLunch(timetable, selection, lunch());
+    expect(analysis.deadSubjects).toHaveLength(1);
+    expect(analysis.deadSubjects[0]?.subject.code).toBe('BB');
+    expect(analysis.deadSubjects[0]?.reason).toMatch(/lunch/);
+  });
+
+  it('is not dead when at least one enabled group survives', () => {
+    const groupA = event('BB/01', 'BB', 'seminar', [slot('Po', 630, 700)]); // during lunch
+    const groupB = event('BB/02', 'BB', 'seminar', [slot('Út', 480, 570)]); // clear
+    const timetable = timetableOf([subject('BB', [], [groupA, groupB])]);
+    const selection = buildFullSelection(timetable);
+
+    expect(analyzeLunch(timetable, selection, lunch()).deadSubjects).toHaveLength(0);
+  });
+
+  it('is silent about a subject the user already narrowed to lecture-only', () => {
+    const onlyGroup = event('BB/01', 'BB', 'seminar', [slot('Po', 630, 700)]);
+    const timetable = timetableOf([subject('BB', [], [onlyGroup])]);
+    const selection = buildFullSelection(timetable);
+    selection.BB!.seminars[onlyGroup.id] = false;
+
+    expect(analyzeLunch(timetable, selection, lunch()).deadSubjects).toHaveLength(0);
+  });
+
+  it('respects a per-day override and a blackout day', () => {
+    const overrideDay = event('BB/01', 'BB', 'seminar', [slot('Út', 720, 780)]); // matches Tuesday's override
+    const blackoutDay = event('CC/01', 'CC', 'seminar', [slot('Po', 630, 700)]); // would overlap the default
+    const timetable = timetableOf([subject('BB', [], [overrideDay]), subject('CC', [], [blackoutDay])]);
+    const selection = buildFullSelection(timetable);
+    const prefs = lunch({ overrides: { Út: { start: 720, end: 780 }, Po: null } });
+
+    const analysis = analyzeLunch(timetable, selection, prefs);
+    expect(analysis.deadSubjects.map((d) => d.subject.code).sort()).toEqual(['BB']); // CC's day is blacked out
   });
 });
