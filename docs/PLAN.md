@@ -1,5 +1,13 @@
 # School Schedule Optimizer — Implementation Plan
 
+> **Note on this document:** this was the working plan for the original two-session build
+> (see *Session split — status* near the bottom). The bundled sample was later swapped for a
+> different, larger real MUNI IS export — see *Sample dataset update* at the very end. The
+> `Context`, `Preferences`, and `Domain model` sections below have been kept up to date against
+> that current sample; the `Session split`, `Work order`, and `Verification` sections are left
+> as the historical record of what was actually built and checked in the original sessions, so
+> they still reference the original bundled sample's subjects by name.
+
 ## Context
 
 The repository `pepo8187/scheduler` is empty (no commits). We are building, from scratch, a
@@ -9,7 +17,7 @@ web app that ingests a MUNI IS timetable export (the same XML format as the uplo
 **The heart of the app is choosing seminar groups.** Lectures are not scheduled by the user —
 they are simply given, at a fixed time, take it or leave it. Every real decision is: *which
 seminar group of each subject do I take?* The user narrows the candidates (e.g. keep only
-`LJ601/01` and `LJ601/02` because they like that teacher), and the algorithm returns the best
+`IB111/03` and `IB111/09` because they like that teacher), and the algorithm returns the best
 possible timetable consistent with those choices and the user's preferences.
 
 Doing this by hand is tedious: the export lists every group of every subject as overlapping
@@ -50,30 +58,40 @@ Parsed structure of `<rozvrh>`:
   the green ✱ marker in the school system, which flags irregular timing (e.g. one week skipped
   for a state holiday). It has **no bearing on the weekly schedule** — we surface the note text
   on hover and otherwise ignore it entirely.
-- `<nezname>` — courses with no scheduled time (state exams, thesis defence). Listed in a
-  tray, never scheduled.
+- `<nezname>` — course editions with no scheduled time (e.g. substitute/make-up sessions,
+  state exams, thesis defence). Listed in a tray, never scheduled.
 
-Code convention confirmed: `MA012` = lecture, `MA012/03` = seminar group 03 of `MA012`.
+Code convention confirmed: `IB111` = lecture, `IB111/03` = seminar group 03 of `IB111`.
 
-The sample's 19 slots yield these subjects, which exercise every shape we must support:
+The (current) bundled sample's 64 slots yield these subjects, which between them exercise
+most of the shapes we must support:
 
 | Subject | Name | Lecture | Seminar groups |
 |---|---|---|---|
-| `LJ601` | Latina pro nelatináře I | — (none) | 01–06 (Po/St/Čt) |
-| `MV008` | Algebra I | Út 08:00–09:50 | 01 only |
-| `MA012` | Statistics II | Út 10:00–11:50 | 01–04 |
-| `MA010` | Graph Theory | Út 12:00–13:50 | 01, 02 — **both Pá 10:00–11:50** |
-| `IA159` | FM for Software Analysis | Út 12:00–13:50 | — |
-| `IA012` | Složitost | St 12:00–13:50 | — |
-| `PV021` | Neural Networks | Čt 08:00–09:50 | — |
+| `IB111` | Základy programování | Út 16:00–17:50 | 01–32, skipping 23 (31 groups) |
+| `MB154` | Diskrétní matematika | Po 14:00–15:50 | 01–05 |
+| `MB152` | Dif. a integrální počet | Po 16:00–17:50 | 01–06 |
+| `M1100` | Matematická analýza I | Út 14:00–15:50, Čt 10:00–11:50 | 01–05 |
+| `M1110` | Lineární algebra a geom. I | St 08:00–09:50 | 01–05 |
+| `PV275` | Intro to Quantum Programming | Út 10:00–11:50 | 01 only |
+| `VV028` | Psychologie v informatice | St 18:00–19:50 | — |
+| `VB005` | Panorama fyziky I | Čt 08:00–09:50 | — |
+| `PB006` | Principy progr. jazyků a OOP | Pá 10:00–11:50 | — |
 
 Three properties of this data drive the design and make good test fixtures:
 
-1. `MA010`'s lecture and `IA159`'s lecture are **both Út 12:00–13:50**. This is the
-   lecture-collision case: shade both, badge them, carry on.
-2. Friday contains *only* the two `MA010` seminar groups, so "Friday off" is achievable — but
-   only by giving up Graph Theory's seminar. The app surfaces that trade-off.
-3. `LJ601` has six groups and no lecture; `MV008` has exactly one group (a forced choice).
+1. `PV275` has exactly one seminar group, `PV275/01`, and it meets **Út 16:00–17:50** — the
+   same slot as `IB111`'s lecture. This is the forced-collision case: since a non-★ lecture is
+   only ever dropped to satisfy a day off (never to dodge a collision), this pairing has no
+   collision-free resolution with everything enabled. Shade both, badge them, carry on.
+2. Tuesday contains `PV275`'s only seminar group, so "Tuesday off" is achievable — but only by
+   giving up Quantum Programming's seminar entirely (on top of dropping three non-★ lectures
+   that also meet Tuesday). The app surfaces that trade-off.
+3. This export happens not to include a lecture-lecture collision or a seminar-only
+   (lecture-less) subject — real full-catalog exports don't always exercise every shape the
+   format allows. Both are still fully supported by the parser/solver/scoring and covered by
+   synthetic fixtures in the unit tests; they're just not demonstrated live by "Load sample"
+   with this particular file.
 
 ## Decisions already made with the user
 
@@ -103,14 +121,14 @@ Because lectures are givens, a day off interacts with them three ways:
 
 - No lecture that day → clean, the day goes fully free.
 - A ★ required lecture that day → the toggle is **blocked**, with the reason spelled out:
-  *"Friday is blocked by IA012 Složitost (lecture, fixed)"* plus two buttons — *clear its
-  priority* / *exclude the subject*.
-- A non-★ lecture that day → allowed; the panel notes *"Friday off: dropping PV021 lecture"*
-  so the cost is visible.
+  *"Tuesday is blocked by IB111 Základy programování (lecture, fixed)"* plus two buttons —
+  *clear its priority* / *exclude the subject*.
+- A non-★ lecture that day → allowed; the panel notes *"Wednesday off: dropping VV028
+  lecture"* so the cost is visible.
 
 If a day off leaves a subject with no usable group, that is reported as a trade-off, not a
-failure: *"Friday off leaves Graph Theory with no usable seminar (01, 02 are both Fri 10:00)"*
-with actions *accept lecture-only* / *exclude subject* / *keep Friday*.
+failure: *"Tuesday off leaves Intro to Quantum Programming with no usable seminar (01 is Tue
+16:00)"* with actions *accept lecture-only* / *exclude subject* / *keep Tuesday*.
 
 ### 2. Compactness — cram vs. spread
 
@@ -303,8 +321,8 @@ interface Slot { day: Day; start: number; end: number;   // minutes from midnigh
                  rooms: string[]; teachers: Teacher[]; noteId?: string; note?: string }
 
 interface CourseEvent {          // one enrollable unit
-  id: string;                    // "MA012" | "MA012/03"
-  subjectCode: string;           // "MA012"
+  id: string;                    // "IB111" | "IB111/03"
+  subjectCode: string;           // "IB111"
   kind: 'lecture' | 'seminar';
   group?: string;                // "03"
   slots: Slot[];                 // >1 when a group meets several times a week
@@ -345,8 +363,8 @@ Exhaustive depth-first search with:
   collision-carrying options with their heavy penalty, so a schedule is always returned;
 - **bounded top-K** — keep the best 10 complete assignments for the alternatives strip.
 
-The space is tiny (48 combinations for the sample; ~10⁶ worst case for a heavy semester), so
-full enumeration yields **proven optimality**. A node budget (~2 M nodes / ~250 ms) guards
+The space is small (23,250 combinations for the current bundled sample; ~10⁶ worst case for a
+heavy semester), so full enumeration yields **proven optimality**. A node budget (~2 M nodes / ~250 ms) guards
 pathological inputs; if exceeded, the solver falls back to randomised-restart hill climbing
 and the result is labelled *"best found — not proven optimal"* rather than claiming
 optimality.
@@ -428,3 +446,22 @@ data, not a defect; verification item 2 below is annotated accordingly.
   9. the app opens in the warm earthy light theme, and the toggle flips cleanly to dark with
      no unstyled or low-contrast areas (screenshots of both).
 - Commit to `claude/school-schedule-optimizer-czj595` and push with `-u origin`.
+
+## Sample dataset update (post-launch)
+
+After the sessions above shipped the app, `public/sample-timetable.xml` was replaced with a
+different, larger real MUNI IS export (podzim 2023: `IB111`, `MB154`, `MB152`, `M1100`,
+`M1110`, `PV275`, `VV028`, `VB005`, `PB006` — 9 subjects, 64 scheduled slots, no lecture-lecture
+overlap and no seminar-only subject). Since this file doubles as the vitest fixture, the
+fixture-dependent tests were updated to match it, and the README's specific examples were
+updated the same way — `PV275`'s single forced seminar group colliding with `IB111`'s lecture
+now plays the role `MV008`/`MA012` used to play, and `PV275`'s Tuesday-only group is now the
+"day off" trade-off example that `MA010`'s Friday-only groups used to be.
+
+The `Context`, `Preferences`, and `Domain model` sections above already describe this current
+sample. The `Session split`, `Work order`, and `Verification` sections above are left
+untouched as the historical record of the original two-session build — they still name the
+original sample's subjects (`LJ601`, `MV008`, `MA012`, `MA010`, `IA159`, `IA012`, `PV021`)
+because that is genuinely what was verified at the time, not because that data is still
+bundled. For current facts and figures (subject list, test count, combinatorics), see the
+`Context` section above and the README.
