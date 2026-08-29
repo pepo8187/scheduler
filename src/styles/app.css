@@ -606,6 +606,44 @@
   gap: 6px;
 }
 
+.lunch-days {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.lunch-day {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+}
+
+.lunch-day__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.lunch-day__detail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 22px;
+}
+
+.lunch-day__skip {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+}
+
 /* --- Results: alternatives, score, diagnostics --- */
 
 .alternatives-bar {
@@ -700,6 +738,91 @@
   margin: 0;
   font-size: var(--fs-sm);
   color: var(--ok);
+}
+
+/* --- Gap explainer --- */
+
+.gap-explainer__copy {
+  margin: 0 0 var(--gap-md);
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+  color: var(--text);
+  max-width: 68ch;
+}
+
+.gap-explainer__copy--muted {
+  color: var(--text-muted);
+}
+
+.gap-explainer__chart-wrap {
+  margin: 0 0 var(--gap-md);
+  max-width: 640px;
+}
+
+.gap-explainer__chart {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.gap-explainer__gridline {
+  stroke: var(--outline);
+  stroke-width: 1;
+}
+
+.gap-explainer__axis {
+  stroke: var(--outline-strong);
+  stroke-width: 1;
+}
+
+.gap-explainer__tick {
+  fill: var(--text-faint);
+  font-size: 10px;
+}
+
+.gap-explainer__area {
+  fill: var(--seminar-fill);
+  opacity: 0.6;
+}
+
+.gap-explainer__curve {
+  fill: none;
+  stroke: var(--seminar-accent);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.gap-explainer__peak-guide {
+  stroke: var(--primary);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.gap-explainer__peak-dot {
+  fill: var(--primary);
+}
+
+.gap-explainer__peak-label {
+  fill: var(--primary);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.gap-explainer__formula {
+  margin: 0 0 var(--gap-md);
+  padding: 10px 14px;
+  background: var(--surface-alt);
+  border: 1px solid var(--outline);
+  border-radius: var(--r-sm);
+  overflow-x: auto;
+}
+
+.gap-explainer__formula code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: var(--fs-sm);
+  color: var(--text);
+  white-space: nowrap;
 }
 
 .diagnostics-panel__section {

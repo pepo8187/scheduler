@@ -4,13 +4,14 @@ import PreferencePanel from './components/prefs/PreferencePanel';
 import WeekGrid from './components/grid/WeekGrid';
 import AlternativesBar from './components/results/AlternativesBar';
 import DiagnosticsPanel from './components/results/DiagnosticsPanel';
+import GapExplainer from './components/results/GapExplainer';
 import ScoreBreakdown from './components/results/ScoreBreakdown';
 import SubjectList from './components/sidebar/SubjectList';
 import ThemeToggle from './components/ThemeToggle';
 import { useScheduler } from './state/schedulerStore';
 
 export default function App() {
-  const { timetable, selection, prefs, dayOffAnalysis, lectureConflicts, solveResult } = useScheduler();
+  const { timetable, selection, prefs, dayOffAnalysis, lectureConflicts, lunchAnalysis, solveResult } = useScheduler();
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   useEffect(() => {
@@ -62,6 +63,7 @@ export default function App() {
                 lectureConflicts={lectureConflicts}
                 dayOffAnalysis={dayOffAnalysis}
                 daysOff={prefs.daysOff}
+                lunchAnalysis={lunchAnalysis}
               />
             </section>
           )}
@@ -74,6 +76,8 @@ export default function App() {
               <p className="placeholder">The week grid renders here.</p>
             )}
           </section>
+
+          <GapExplainer />
         </main>
       </div>
     </div>

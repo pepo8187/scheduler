@@ -4,9 +4,9 @@ export const DEFAULT_PREFS: Prefs = {
   daysOff: [],
   compactness: 0,
   gaps: 0.3,
-  lunchBufferMinutes: 60,
   dayWindow: { start: 480, end: 1200 }, // matches the grid's own 08:00-20:00 bounds: no nudge by default
   maxClassesPerDay: null,
+  lunch: { enabled: false, default: { start: 600, end: 660 }, overrides: {} }, // 10:00-11:00, opt-in
 };
 
 export type PresetId = 'cramIt' | 'spreadEvenly' | 'lateRiser' | 'longWeekend';

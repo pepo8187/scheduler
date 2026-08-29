@@ -23,6 +23,10 @@ how-it-works.
   out, take a day off, avoid early mornings and late evenings, minimise dead time between
   classes, cap classes per day. Four presets (*Cram it in*, *Spread evenly*, *Late riser*,
   *Long weekend*) set them all at once as a starting point.
+- **Can block out lunch, opt-in** — turn it on, set a time, and no seminar group touching that
+  window is ever chosen. Off by default; each of the five weekdays can use the same window,
+  a different one (a later lunch on a day with a long morning), or none at all. This is a
+  hard constraint like a day off, not a scoring nudge — see *Blocking out lunch* below.
 - **Explains itself** — every schedule comes with a full score breakdown, and a day-off toggle
   that would strand a subject explains why and offers one-click fixes (accept lecture-only,
   exclude the subject, or keep the day) instead of silently refusing.
@@ -38,7 +42,7 @@ how-it-works.
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm run test     # unit tests (vitest + jsdom) — 66 tests across parser/overlap/analysis/score/solver
+npm run test     # unit tests (vitest + jsdom) — 90 tests across parser/overlap/analysis/lunch/score/solver
 npm run build    # typecheck + production build
 ```
 
@@ -56,15 +60,16 @@ purely for layout) → `<slot>` (one class meeting). What matters:
 | `<akce><kod>` | The class code — see below |
 | `<mistnosti>` / `<ucitele>` | Rooms and teachers, repeated once per teaching week (de-duplicated on parse) |
 | `<poznamky>` | Notes and irregular-timing dates; shown on hover, ignored by the solver |
-| `<nezname>` | Courses with no time (state exams, thesis defence); listed, never scheduled |
+| `<nezname>` | Course editions with no fixed slot (e.g. substitute/make-up sessions); listed, never scheduled |
 
 The code tells you what kind of class it is:
 
-- `MA012` — a **lecture** of subject `MA012`
-- `MA012/03` — **seminar group 03** of subject `MA012`
+- `IB111` — a **lecture** of subject `IB111`
+- `IB111/03` — **seminar group 03** of subject `IB111`
 
-A subject may have both, only a lecture (`IA012`), or only seminars (`LJ601`, a language
-class with six groups and no lecture).
+A subject may have both, or only a lecture (`VV028`). The format also allows a subject
+with only seminars and no lecture at all — a language class with several groups, say — the
+bundled sample just doesn't happen to include one.
 
 ## The scoring model
 
@@ -76,7 +81,7 @@ penalty terms (`src/domain/score.ts`), weighted so more important things always 
 | Seminar collisions | Any overlap involving a seminar (seminar↔seminar or seminar↔lecture) | 100,000 per pair |
 | Dropped lectures | A non-★ lecture dropped to honour a day off | 2,000 per lecture |
 | Compactness | Cram: days used. Spread: unused weekdays first, load-variance as a tiebreak | up to ~30/day |
-| Dead time | Idle minutes between classes on the same day, minus the lunch buffer | up to 3/minute |
+| Dead time | Idle time between classes on the same day, weighted by gap length (see below) | up to 3/peak-minute |
 | Day window | Minutes scheduled outside the requested start/end | 4/minute |
 | Max classes/day | Classes beyond the optional daily cap | 150/class |
 
@@ -85,24 +90,62 @@ term — so the solver only ever trades comfort for comfort, never for a collisi
 lecture overlaps are not scored at all: they're a fact of the export (see below), rendered as
 a badge, and never influence which seminar group gets picked.
 
+### Dead time isn't linear
+
+A gap's badness isn't proportional to its length. A short walk-between-buildings gap is
+basically free; a **~2 hour hole is the worst case** — too long to just sit and wait, too
+short to leave campus and do anything with. Beyond that peak, longer gaps get sharply
+*cheaper* again: 4 hours is enough for a real library session, 6–8 hours is enough to go home
+or to work and come back, so a single long block is treated as only mildly worse than no gap
+at all. Two classes at 08:00–10:00 and 18:00–20:00 (one 8-hour gap) therefore score much
+better than the same two classes at 10:00–12:00 and 14:00–16:00 (one 2-hour gap), and three
+classes with a single 6-hour gap score better than three classes with two 2-hour gaps —
+even though the latter has *less* total idle time.
+
+`gapBadness()` (`src/domain/score.ts`) models this as a Gamma(shape=2)-shaped curve: it rises
+from zero, peaks at a 2-hour gap, and decays exponentially past it, rescaled so the peak
+itself equals 120 "minutes" — i.e. the worst-case gap costs exactly what a naive per-minute
+model would have charged, and every other length is discounted relative to that. The score
+itself has no special exemption for lunchtime or any other time of day; only a gap's length
+matters. If you specifically want lunch protected, that's the separate opt-in preference
+below — not a scoring nudge, but a hard block.
+
+### Blocking out lunch
+
+**Block out lunch** (off by default) is a hard constraint, the same kind as a day off, just
+scoped to a time window instead of a whole day: turn it on, set a default *From– Until*, and
+no seminar group with a slot touching that window on any of the five weekdays is ever chosen
+— it's filtered out of the solver's search space before the search even starts
+(`src/domain/lunch.ts`, wired into `buildVariables` in `solver.ts`). If narrowing leaves a
+subject with no group that survives, that's reported as a "Lunch trade-off" (the same
+never-fail spirit as a day-off trade-off) rather than silently dropped or left unexplained.
+
+Each weekday can differ: leave a day alone to use the default window, give it its own *From–
+Until* (a later lunch on a day with a long morning), or blacklist it entirely ("no lunch
+block this day") if that day never had a protected lunch to begin with. A fixed lecture that
+happens to sit inside the lunch window is left alone either way — lectures are givens, never
+dropped or moved to protect lunch — but it's still surfaced as an informational note so the
+block's limits are visible rather than assumed away.
+
 `src/domain/solver.ts` searches one variable per enabled subject-with-seminars (which group,
 or none) via MRV-ordered DFS with forward checking, keeping the best 10 by score. Non-★
 lecture drops aren't searched — they're derived directly from which days are off, since that
-is the only thing they're ever used for. The search space for a normal semester is tiny (48
-combinations for the bundled sample) so this is exhaustive and provably optimal; a node-budget
-guard falls back to randomised local search on pathological inputs, and that result is
-labelled "best found — not proven optimal" rather than claiming something it can't prove.
+is the only thing they're ever used for. The search space for a normal semester is small
+(23,250 combinations for the bundled sample) so this is exhaustive and provably optimal; a
+node-budget guard falls back to randomised local search on pathological inputs, and that
+result is labelled "best found — not proven optimal" rather than claiming something it can't
+prove.
 
 ### A real unavoidable collision
 
-The bundled sample isn't a clean toy: `MV008` ("Algebra I") has exactly one seminar group,
-`MV008/01`, and it meets Tuesday 10:00–11:50 — the same slot as `MA012`'s lecture. Since a
-non-★ lecture is only ever dropped to satisfy a day off (never to dodge a collision, per the
-plan's own design), this pairing has no collision-free resolution with everything enabled.
-Loading the sample as-is therefore shows one real seminar-collision badge out of the box —
-which is exactly the "never fail, shade it and move on" behaviour this app is built around,
-not a bug. Disabling `MV008` (or accepting the collision) is the user's call, same as any
-other trade-off the app surfaces.
+The bundled sample isn't a clean toy: `PV275` ("Intro to Quantum Programming") has exactly
+one seminar group, `PV275/01`, and it meets Tuesday 16:00–17:50 — the same slot as `IB111`'s
+lecture. Since a non-★ lecture is only ever dropped to satisfy a day off (never to dodge a
+collision, per the plan's own design), this pairing has no collision-free resolution with
+everything enabled. Loading the sample as-is therefore shows one real seminar-collision badge
+out of the box — which is exactly the "never fail, shade it and move on" behaviour this app is
+built around, not a bug. Disabling `PV275` (or accepting the collision) is the user's call,
+same as any other trade-off the app surfaces.
 
 ## Colour
 
@@ -123,19 +166,20 @@ src/domain/                     pure TypeScript, no React — unit-testable head
   types.ts                        Day, Slot, CourseEvent, Subject, Timetable, Prefs, Selection, Solution
   parseTimetable.ts                XML -> Timetable
   overlap.ts                       interval overlap + lecture-lecture vs seminar classification
-  analysis.ts                      day-off pre-flight: blockers, drops, dead-subject trade-offs
+  analysis.ts                      day-off & lunch pre-flight: blockers, drops, dead-subject trade-offs
+  lunch.ts                         effective per-day lunch window + slot-overlaps-lunch check
   score.ts                         the objective and its per-term breakdown
   solver.ts                        MRV/forward-checking DFS, top-10, node-budget fallback
   presets.ts                       default prefs + the four one-click bundles
   format.ts                        minutes<->"HH:MM", day labels, slot/teacher/room descriptions
-  __tests__/                       vitest: parser, overlap, analysis, score, solver (+ real-sample fixture)
+  __tests__/                       vitest: parser, overlap, analysis, lunch, score, solver (+ real-sample fixture)
 src/state/schedulerStore.tsx    useReducer + Context; persists xml/selection/prefs to localStorage
 src/components/
   FileDrop.tsx                     drag/drop + "Load sample"
   sidebar/                         SubjectList, SubjectCard, TeacherChips, UnscheduledTray
-  prefs/                           PreferencePanel, DayOffToggles, PresetBar
+  prefs/                           PreferencePanel, DayOffToggles, LunchBreak, PresetBar
   grid/                            WeekGrid, HourRuler, DayRow, EventBlock, Legend
-  results/                         AlternativesBar, ScoreBreakdown, DiagnosticsPanel
+  results/                         AlternativesBar, ScoreBreakdown, DiagnosticsPanel, GapExplainer
   ThemeToggle.tsx
 src/styles/theme.css            every colour, radius and shadow token, light + dark
 src/styles/app.css              layout and every component's styling

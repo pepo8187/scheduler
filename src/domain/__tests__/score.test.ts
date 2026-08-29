@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_PREFS } from '../presets';
-import { computeScore, resolveAssignment, WEIGHTS } from '../score';
+import { computeScore, gapBadness, resolveAssignment, WEIGHTS } from '../score';
 import type { Assignment, CourseEvent, Prefs, Slot, Subject, Timetable } from '../types';
 import { buildFullSelection } from './selection';
 
@@ -169,15 +169,57 @@ describe('computeScore — gaps', () => {
     expect(score.terms.find((t) => t.key === 'gaps')?.cost).toBe(0);
   });
 
-  it('penalises idle minutes between classes on the same day, exempting the lunch buffer', () => {
+  it('charges exactly the peak-weighted badness for a single gap, per the gaps slider and weight', () => {
     const a = event('AA', 'AA', 'lecture', [slot('Po', 660, 690)]); // 11:00-11:30
     const b = event('BB', 'BB', 'lecture', [slot('Po', 780, 810)]); // 13:00-13:30, 90 min gap
     const timetable = timetableOf([subject('AA', [a], []), subject('BB', [b], [])]);
     const selection = buildFullSelection(timetable);
-    const prefs: Prefs = { ...DEFAULT_PREFS, gaps: 1, lunchBufferMinutes: 60 }; // exempt 690-750
-    const score = computeScore(timetable, selection, prefs, emptyAssignment());
-    // gap is 690-780 (90 min); lunch window 690-750 (60 min) is exempt; 30 idle minutes remain
-    expect(score.terms.find((t) => t.key === 'gaps')?.cost).toBe(30 * WEIGHTS.gapsPerIdleMinute);
+    const score = computeScore(timetable, selection, { ...DEFAULT_PREFS, gaps: 1 }, emptyAssignment());
+    expect(score.terms.find((t) => t.key === 'gaps')?.cost).toBeCloseTo(gapBadness(90) * WEIGHTS.gapsPerIdleMinute);
+    expect(score.terms.find((t) => t.key === 'gaps')?.detail).toBe('90 idle minute(s)');
+  });
+
+  it('does not care what time of day a gap falls at — no special midday exemption', () => {
+    const midday = timetableOf([
+      subject('AA', [event('AA', 'AA', 'lecture', [slot('Po', 660, 690)])], []), // 11:00-11:30
+      subject('BB', [event('BB', 'BB', 'lecture', [slot('Po', 780, 810)])], []), // 13:00-13:30
+    ]);
+    const morning = timetableOf([
+      subject('AA', [event('AA', 'AA', 'lecture', [slot('Po', 480, 510)])], []), // 08:00-08:30
+      subject('BB', [event('BB', 'BB', 'lecture', [slot('Po', 600, 630)])], []), // 10:00-10:30
+    ]);
+    const prefs: Prefs = { ...DEFAULT_PREFS, gaps: 1 };
+    const middayScore = computeScore(midday, buildFullSelection(midday), prefs, emptyAssignment());
+    const morningScore = computeScore(morning, buildFullSelection(morning), prefs, emptyAssignment());
+    expect(middayScore.terms.find((t) => t.key === 'gaps')?.cost).toBe(morningScore.terms.find((t) => t.key === 'gaps')?.cost);
+  });
+
+  it('peaks around a ~2 hour gap and gets much milder for both shorter and much longer ones', () => {
+    expect(gapBadness(120)).toBeGreaterThan(gapBadness(20));
+    expect(gapBadness(120)).toBeGreaterThan(gapBadness(480));
+    expect(gapBadness(480)).toBeLessThan(gapBadness(120) * 0.1); // an 8-hour gap is nearly free
+  });
+
+  it('prefers one long block over two medium gaps, even though it has more total idle time', () => {
+    // 8am-10am, 10am-12pm, 6pm-8pm: back-to-back first two, one 6-hour gap before the third.
+    const oneLongGap = timetableOf([
+      subject('AA', [event('AA', 'AA', 'lecture', [slot('Po', 480, 600)])], []),
+      subject('BB', [event('BB', 'BB', 'lecture', [slot('Po', 600, 720)])], []),
+      subject('CC', [event('CC', 'CC', 'lecture', [slot('Po', 1080, 1200)])], []),
+    ]);
+    // 8am-10am, 12pm-2pm, 4pm-6pm: two 2-hour gaps.
+    const twoMediumGaps = timetableOf([
+      subject('AA', [event('AA', 'AA', 'lecture', [slot('Po', 480, 600)])], []),
+      subject('BB', [event('BB', 'BB', 'lecture', [slot('Po', 720, 840)])], []),
+      subject('CC', [event('CC', 'CC', 'lecture', [slot('Po', 960, 1080)])], []),
+    ]);
+    const prefs: Prefs = { ...DEFAULT_PREFS, gaps: 1 };
+    const oneLongGapScore = computeScore(oneLongGap, buildFullSelection(oneLongGap), prefs, emptyAssignment());
+    const twoMediumGapsScore = computeScore(twoMediumGaps, buildFullSelection(twoMediumGaps), prefs, emptyAssignment());
+
+    expect(oneLongGapScore.terms.find((t) => t.key === 'gaps')?.cost).toBeLessThan(
+      twoMediumGapsScore.terms.find((t) => t.key === 'gaps')!.cost,
+    );
   });
 });
 

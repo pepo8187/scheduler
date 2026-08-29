@@ -89,6 +89,68 @@ describe('solve — never fails', () => {
   });
 });
 
+describe('solve — lunch block', () => {
+  it('excludes a seminar group overlapping lunch when a collision-free alternative exists', () => {
+    const lecture = event('AA', 'AA', 'lecture', [slot('Po', 480, 570)]);
+    const duringLunch = event('BB/01', 'BB', 'seminar', [slot('Út', 630, 700)], '01'); // 10:30-11:40
+    const clear = event('BB/02', 'BB', 'seminar', [slot('Út', 480, 570)], '02');
+    const timetable = timetableOf([subject('AA', [lecture], []), subject('BB', [], [duringLunch, clear])]);
+    const selection = buildFullSelection(timetable);
+    const prefs: Prefs = { ...DEFAULT_PREFS, lunch: { enabled: true, default: { start: 600, end: 660 }, overrides: {} } };
+
+    const result = solve(timetable, selection, prefs);
+    expect(result.solutions[0]?.assignment.seminarChoice.BB).toBe('BB/02');
+    expect(result.solutions[0]?.score.total).toBe(0);
+  });
+
+  it('falls back to "no seminar chosen" once every group for a subject overlaps lunch, without penalty', () => {
+    const onlyGroup = event('BB/01', 'BB', 'seminar', [slot('Po', 630, 700)], '01'); // 10:30-11:40
+    const timetable = timetableOf([subject('BB', [], [onlyGroup])]);
+    const selection = buildFullSelection(timetable);
+    const prefs: Prefs = { ...DEFAULT_PREFS, lunch: { enabled: true, default: { start: 600, end: 660 }, overrides: {} } };
+
+    const result = solve(timetable, selection, prefs);
+    expect(result.solutions[0]?.assignment.seminarChoice.BB).toBeNull();
+    expect(result.solutions[0]?.score.total).toBe(0);
+  });
+
+  it('does nothing when lunch is disabled', () => {
+    const onlyGroup = event('BB/01', 'BB', 'seminar', [slot('Po', 630, 700)], '01');
+    const timetable = timetableOf([subject('BB', [], [onlyGroup])]);
+    const selection = buildFullSelection(timetable);
+
+    const result = solve(timetable, selection, DEFAULT_PREFS); // lunch off by default
+    expect(result.solutions[0]?.assignment.seminarChoice.BB).toBe('BB/01');
+  });
+
+  it('respects a per-day override instead of the default window', () => {
+    // Group meets during the Tuesday-specific lunch window (12:00-13:00) but not the default (10:00-11:00).
+    const group = event('BB/01', 'BB', 'seminar', [slot('Út', 720, 780)], '01');
+    const timetable = timetableOf([subject('BB', [], [group])]);
+    const selection = buildFullSelection(timetable);
+    const prefs: Prefs = {
+      ...DEFAULT_PREFS,
+      lunch: { enabled: true, default: { start: 600, end: 660 }, overrides: { Út: { start: 720, end: 780 } } },
+    };
+
+    const result = solve(timetable, selection, prefs);
+    expect(result.solutions[0]?.assignment.seminarChoice.BB).toBeNull(); // excluded by the Tuesday override
+  });
+
+  it('a blacked-out day ignores the default window entirely', () => {
+    const group = event('BB/01', 'BB', 'seminar', [slot('Po', 630, 700)], '01'); // would overlap the default
+    const timetable = timetableOf([subject('BB', [], [group])]);
+    const selection = buildFullSelection(timetable);
+    const prefs: Prefs = {
+      ...DEFAULT_PREFS,
+      lunch: { enabled: true, default: { start: 600, end: 660 }, overrides: { Po: null } },
+    };
+
+    const result = solve(timetable, selection, prefs);
+    expect(result.solutions[0]?.assignment.seminarChoice.BB).toBe('BB/01');
+  });
+});
+
 describe('solve — node budget fallback', () => {
   it('labels the result not-proven-optimal once the budget is exceeded, and still returns solutions', () => {
     const lecture = event('AA', 'AA', 'lecture', [slot('Po', 480, 570)]);
@@ -133,7 +195,7 @@ describe('solve — brute-force cross-check on the real sample', () => {
     return best;
   }
 
-  it('the top-ranked solution matches a direct brute-force minimum over all 48 combinations', () => {
+  it('the top-ranked solution matches a direct brute-force minimum over all 23,250 combinations', () => {
     const timetable = parseTimetable(readSampleXml());
     const selection = buildFullSelection(timetable);
 
@@ -144,15 +206,15 @@ describe('solve — brute-force cross-check on the real sample', () => {
     expect(result.solutions[0]?.score.total).toBe(bruteBest);
   });
 
-  it('still matches brute force once Friday is off and the MA010 trade-off is forced', () => {
+  it('still matches brute force once Tuesday is off and the PV275 trade-off is forced', () => {
     const timetable = parseTimetable(readSampleXml());
     const selection = buildFullSelection(timetable);
-    const prefs: Prefs = { ...DEFAULT_PREFS, daysOff: ['Pá'] };
+    const prefs: Prefs = { ...DEFAULT_PREFS, daysOff: ['Út'] };
 
     const result = solve(timetable, selection, prefs);
     const bruteBest = bruteForceMinimum(timetable, selection, prefs);
 
     expect(result.solutions[0]?.score.total).toBe(bruteBest);
-    expect(result.solutions[0]?.assignment.seminarChoice.MA010).toBeNull(); // no Friday-free group survives
+    expect(result.solutions[0]?.assignment.seminarChoice.PV275).toBeNull(); // no Tuesday-free group survives
   });
 });

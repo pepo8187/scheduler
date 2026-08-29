@@ -73,13 +73,25 @@ export interface DayWindow {
   end: number; // minutes from midnight, inclusive
 }
 
+export interface LunchPrefs {
+  enabled: boolean; // off by default: opt in to blocking out lunch at all
+  default: DayWindow; // the usual lunch window, applied to every toggleable day unless overridden
+  /**
+   * Per-day override, keyed by Day. A DayWindow overrides `default` for that day (e.g. a
+   * later lunch on a day with a long morning); `null` skips the block entirely for that day
+   * (it never had a fixed lunch, so nothing to protect). A day absent from this map uses
+   * `default`.
+   */
+  overrides: Partial<Record<Day, DayWindow | null>>;
+}
+
 export interface Prefs {
   daysOff: Day[]; // hard constraint: no seminar group touching these days is considered
   compactness: number; // -1 (spread) .. 0 (neutral) .. +1 (cram)
   gaps: number; // 0 (gaps are fine) .. 1 (no dead time)
-  lunchBufferMinutes: number; // idle time around midday exempt from the gaps penalty
   dayWindow: DayWindow; // when the user wants to be at school; outside is soft-penalised
   maxClassesPerDay: number | null; // soft cap; null = off
+  lunch: LunchPrefs; // hard constraint like daysOff, but for a time window instead of a whole day
 }
 
 // ---------------------------------------------------------------------------
