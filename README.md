@@ -38,7 +38,7 @@ how-it-works.
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm run test     # unit tests (vitest + jsdom) — 66 tests across parser/overlap/analysis/score/solver
+npm run test     # unit tests (vitest + jsdom) — 67 tests across parser/overlap/analysis/score/solver
 npm run build    # typecheck + production build
 ```
 
@@ -56,15 +56,16 @@ purely for layout) → `<slot>` (one class meeting). What matters:
 | `<akce><kod>` | The class code — see below |
 | `<mistnosti>` / `<ucitele>` | Rooms and teachers, repeated once per teaching week (de-duplicated on parse) |
 | `<poznamky>` | Notes and irregular-timing dates; shown on hover, ignored by the solver |
-| `<nezname>` | Courses with no time (state exams, thesis defence); listed, never scheduled |
+| `<nezname>` | Course editions with no fixed slot (e.g. substitute/make-up sessions); listed, never scheduled |
 
 The code tells you what kind of class it is:
 
-- `MA012` — a **lecture** of subject `MA012`
-- `MA012/03` — **seminar group 03** of subject `MA012`
+- `IB111` — a **lecture** of subject `IB111`
+- `IB111/03` — **seminar group 03** of subject `IB111`
 
-A subject may have both, only a lecture (`IA012`), or only seminars (`LJ601`, a language
-class with six groups and no lecture).
+A subject may have both, or only a lecture (`VV028`). The format also allows a subject
+with only seminars and no lecture at all — a language class with several groups, say — the
+bundled sample just doesn't happen to include one.
 
 ## The scoring model
 
@@ -88,21 +89,22 @@ a badge, and never influence which seminar group gets picked.
 `src/domain/solver.ts` searches one variable per enabled subject-with-seminars (which group,
 or none) via MRV-ordered DFS with forward checking, keeping the best 10 by score. Non-★
 lecture drops aren't searched — they're derived directly from which days are off, since that
-is the only thing they're ever used for. The search space for a normal semester is tiny (48
-combinations for the bundled sample) so this is exhaustive and provably optimal; a node-budget
-guard falls back to randomised local search on pathological inputs, and that result is
-labelled "best found — not proven optimal" rather than claiming something it can't prove.
+is the only thing they're ever used for. The search space for a normal semester is small
+(23,250 combinations for the bundled sample) so this is exhaustive and provably optimal; a
+node-budget guard falls back to randomised local search on pathological inputs, and that
+result is labelled "best found — not proven optimal" rather than claiming something it can't
+prove.
 
 ### A real unavoidable collision
 
-The bundled sample isn't a clean toy: `MV008` ("Algebra I") has exactly one seminar group,
-`MV008/01`, and it meets Tuesday 10:00–11:50 — the same slot as `MA012`'s lecture. Since a
-non-★ lecture is only ever dropped to satisfy a day off (never to dodge a collision, per the
-plan's own design), this pairing has no collision-free resolution with everything enabled.
-Loading the sample as-is therefore shows one real seminar-collision badge out of the box —
-which is exactly the "never fail, shade it and move on" behaviour this app is built around,
-not a bug. Disabling `MV008` (or accepting the collision) is the user's call, same as any
-other trade-off the app surfaces.
+The bundled sample isn't a clean toy: `PV275` ("Intro to Quantum Programming") has exactly
+one seminar group, `PV275/01`, and it meets Tuesday 16:00–17:50 — the same slot as `IB111`'s
+lecture. Since a non-★ lecture is only ever dropped to satisfy a day off (never to dodge a
+collision, per the plan's own design), this pairing has no collision-free resolution with
+everything enabled. Loading the sample as-is therefore shows one real seminar-collision badge
+out of the box — which is exactly the "never fail, shade it and move on" behaviour this app is
+built around, not a bug. Disabling `PV275` (or accepting the collision) is the user's call,
+same as any other trade-off the app surfaces.
 
 ## Colour
 

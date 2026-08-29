@@ -25,10 +25,10 @@ describe('slotsOverlap', () => {
     expect(slotsOverlap(a, b)).toBe(false);
   });
 
-  it('detects the Út 12:00 lecture collision from the sample export', () => {
-    const ia159 = slot('Út', 720, 830); // 12:00-13:50
-    const ma010 = slot('Út', 720, 830);
-    expect(slotsOverlap(ia159, ma010)).toBe(true);
+  it('detects two same-day, same-time lectures as overlapping', () => {
+    const a = slot('Út', 720, 830); // 12:00-13:50
+    const b = slot('Út', 720, 830);
+    expect(slotsOverlap(a, b)).toBe(true);
   });
 });
 

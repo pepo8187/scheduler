@@ -26,9 +26,9 @@ describe('sample timetable fixture', () => {
     expect(doc.querySelector('maxhod')?.textContent).toBe('1200');
   });
 
-  it('contains the 19 scheduled slots across five days', () => {
+  it('contains the 64 scheduled slots across five days', () => {
     const doc = loadSample();
-    expect(doc.querySelectorAll('tabulka slot')).toHaveLength(19);
+    expect(doc.querySelectorAll('tabulka slot')).toHaveLength(64);
     const days = [...doc.querySelectorAll('tabulka den')].map((d) => d.getAttribute('id'));
     expect(days).toEqual(['Po', 'Út', 'St', 'Čt', 'Pá']);
   });
@@ -36,16 +36,16 @@ describe('sample timetable fixture', () => {
   it('carries both lecture codes and slash-suffixed seminar group codes', () => {
     const doc = loadSample();
     const codes = [...doc.querySelectorAll('tabulka slot akce kod')].map((k) => k.textContent);
-    expect(codes).toContain('MA012');
-    expect(codes).toContain('MA012/03');
-    // LJ601 is seminar-only: six groups, no bare lecture code.
-    expect(codes.filter((c) => c?.startsWith('LJ601/'))).toHaveLength(6);
-    expect(codes).not.toContain('LJ601');
+    expect(codes).toContain('IB111');
+    expect(codes).toContain('IB111/01');
+    // PV275 is a forced choice: exactly one seminar group alongside its lecture.
+    expect(codes.filter((c) => c?.startsWith('PV275/'))).toHaveLength(1);
   });
 
-  it('lists the unscheduled courses that must never be placed on the grid', () => {
+  it('lists the unscheduled (nezname) courses that must never be placed on the grid', () => {
     const doc = loadSample();
     const codes = [...doc.querySelectorAll('nezname akce kod')].map((k) => k.textContent);
-    expect(codes).toEqual(['SOBHA', 'SZB']);
+    expect(codes).toHaveLength(16);
+    expect(codes.every((c) => c?.startsWith('IB111/') && c?.endsWith('_nahrada'))).toBe(true);
   });
 });

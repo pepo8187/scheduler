@@ -133,7 +133,7 @@ describe('solve — brute-force cross-check on the real sample', () => {
     return best;
   }
 
-  it('the top-ranked solution matches a direct brute-force minimum over all 48 combinations', () => {
+  it('the top-ranked solution matches a direct brute-force minimum over all 23,250 combinations', () => {
     const timetable = parseTimetable(readSampleXml());
     const selection = buildFullSelection(timetable);
 
@@ -144,15 +144,15 @@ describe('solve — brute-force cross-check on the real sample', () => {
     expect(result.solutions[0]?.score.total).toBe(bruteBest);
   });
 
-  it('still matches brute force once Friday is off and the MA010 trade-off is forced', () => {
+  it('still matches brute force once Tuesday is off and the PV275 trade-off is forced', () => {
     const timetable = parseTimetable(readSampleXml());
     const selection = buildFullSelection(timetable);
-    const prefs: Prefs = { ...DEFAULT_PREFS, daysOff: ['Pá'] };
+    const prefs: Prefs = { ...DEFAULT_PREFS, daysOff: ['Út'] };
 
     const result = solve(timetable, selection, prefs);
     const bruteBest = bruteForceMinimum(timetable, selection, prefs);
 
     expect(result.solutions[0]?.score.total).toBe(bruteBest);
-    expect(result.solutions[0]?.assignment.seminarChoice.MA010).toBeNull(); // no Friday-free group survives
+    expect(result.solutions[0]?.assignment.seminarChoice.PV275).toBeNull(); // no Tuesday-free group survives
   });
 });
