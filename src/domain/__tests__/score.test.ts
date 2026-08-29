@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_PREFS } from '../presets';
-import { computeScore, gapBadness, resolveAssignment, WEIGHTS } from '../score';
+import { GAP_BADNESS_CAP, computeScore, gapBadness, resolveAssignment, WEIGHTS } from '../score';
 import type { Assignment, CourseEvent, Prefs, Slot, Subject, Timetable } from '../types';
 import { buildFullSelection } from './selection';
 
@@ -194,20 +194,46 @@ describe('computeScore — gaps', () => {
     expect(middayScore.terms.find((t) => t.key === 'gaps')?.cost).toBe(morningScore.terms.find((t) => t.key === 'gaps')?.cost);
   });
 
-  it('peaks around a ~2 hour gap and gets much milder for both shorter and much longer ones', () => {
-    expect(gapBadness(120)).toBeGreaterThan(gapBadness(20));
-    expect(gapBadness(120)).toBeGreaterThan(gapBadness(480));
-    expect(gapBadness(480)).toBeLessThan(gapBadness(120) * 0.1); // an 8-hour gap is nearly free
+  it('rises with gap length and flattens out, but never gets cheaper for a longer gap', () => {
+    expect(gapBadness(20)).toBeGreaterThan(0);
+    expect(gapBadness(60)).toBeGreaterThan(gapBadness(20));
+    expect(gapBadness(120)).toBeGreaterThan(gapBadness(60));
+    expect(gapBadness(480)).toBeGreaterThan(gapBadness(120)); // an 8-hour gap is never cheaper...
+    // ...but the marginal cost tapers off: the last 360 minutes (120→480) add less badness
+    // than the first 120 did, and it stays under the cap however long the gap gets.
+    expect(gapBadness(480) - gapBadness(120)).toBeLessThan(gapBadness(120));
+    expect(gapBadness(1_000)).toBeLessThan(GAP_BADNESS_CAP);
+    expect(gapBadness(1_000)).toBeGreaterThan(GAP_BADNESS_CAP * 0.99);
   });
 
-  it('prefers one long block over two medium gaps, even though it has more total idle time', () => {
+  it('never prefers creating a gap over closing it, however long the alternative gap would be', () => {
+    // 8am-10am, 10am-12pm: back-to-back, no gap at all.
+    const backToBack = timetableOf([
+      subject('AA', [event('AA', 'AA', 'lecture', [slot('Po', 480, 600)])], []),
+      subject('BB', [event('BB', 'BB', 'lecture', [slot('Po', 600, 720)])], []),
+    ]);
+    // 8am-10am, 6pm-8pm: same first class, but the second sits after an 8-hour dead gap.
+    const bigGap = timetableOf([
+      subject('AA', [event('AA', 'AA', 'lecture', [slot('Po', 480, 600)])], []),
+      subject('BB', [event('BB', 'BB', 'lecture', [slot('Po', 1080, 1200)])], []),
+    ]);
+    const prefs: Prefs = { ...DEFAULT_PREFS, gaps: 1 };
+    const backToBackScore = computeScore(backToBack, buildFullSelection(backToBack), prefs, emptyAssignment());
+    const bigGapScore = computeScore(bigGap, buildFullSelection(bigGap), prefs, emptyAssignment());
+
+    expect(backToBackScore.terms.find((t) => t.key === 'gaps')?.cost).toBe(0);
+    expect(bigGapScore.terms.find((t) => t.key === 'gaps')!.cost).toBeGreaterThan(0);
+    expect(backToBackScore.total).toBeLessThan(bigGapScore.total);
+  });
+
+  it('still prefers one consolidated gap over two fragmented ones, but never below zero cost', () => {
     // 8am-10am, 10am-12pm, 6pm-8pm: back-to-back first two, one 6-hour gap before the third.
     const oneLongGap = timetableOf([
       subject('AA', [event('AA', 'AA', 'lecture', [slot('Po', 480, 600)])], []),
       subject('BB', [event('BB', 'BB', 'lecture', [slot('Po', 600, 720)])], []),
       subject('CC', [event('CC', 'CC', 'lecture', [slot('Po', 1080, 1200)])], []),
     ]);
-    // 8am-10am, 12pm-2pm, 4pm-6pm: two 2-hour gaps.
+    // 8am-10am, 12pm-2pm, 4pm-6pm: two 2-hour gaps, less total idle time than the 6-hour gap above.
     const twoMediumGaps = timetableOf([
       subject('AA', [event('AA', 'AA', 'lecture', [slot('Po', 480, 600)])], []),
       subject('BB', [event('BB', 'BB', 'lecture', [slot('Po', 720, 840)])], []),
@@ -217,9 +243,13 @@ describe('computeScore — gaps', () => {
     const oneLongGapScore = computeScore(oneLongGap, buildFullSelection(oneLongGap), prefs, emptyAssignment());
     const twoMediumGapsScore = computeScore(twoMediumGaps, buildFullSelection(twoMediumGaps), prefs, emptyAssignment());
 
+    // Consolidating into one long gap still costs less than splitting into two medium ones
+    // (each hit hard by the same climbing part of the curve) — but both cost strictly more
+    // than a back-to-back schedule would, which the bug-fix test above nails down directly.
     expect(oneLongGapScore.terms.find((t) => t.key === 'gaps')?.cost).toBeLessThan(
       twoMediumGapsScore.terms.find((t) => t.key === 'gaps')!.cost,
     );
+    expect(oneLongGapScore.terms.find((t) => t.key === 'gaps')!.cost).toBeGreaterThan(0);
   });
 });
 

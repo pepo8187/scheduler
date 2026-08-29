@@ -806,10 +806,6 @@
   stroke-dasharray: 3 3;
 }
 
-.gap-explainer__peak-dot {
-  fill: var(--primary);
-}
-
 .gap-explainer__peak-label {
   fill: var(--primary);
   font-size: 11px;

@@ -81,7 +81,7 @@ penalty terms (`src/domain/score.ts`), weighted so more important things always 
 | Seminar collisions | Any overlap involving a seminar (seminar↔seminar or seminar↔lecture) | 100,000 per pair |
 | Dropped lectures | A non-★ lecture dropped to honour a day off | 2,000 per lecture |
 | Compactness | Cram: days used. Spread: unused weekdays first, load-variance as a tiebreak | up to ~30/day |
-| Dead time | Idle time between classes on the same day, weighted by gap length (see below) | up to 3/peak-minute |
+| Dead time | Idle time between classes on the same day, weighted by gap length (see below) | up to 3/capped-minute |
 | Day window | Minutes scheduled outside the requested start/end | 4/minute |
 | Max classes/day | Classes beyond the optional daily cap | 150/class |
 
@@ -92,23 +92,25 @@ a badge, and never influence which seminar group gets picked.
 
 ### Dead time isn't linear
 
-A gap's badness isn't proportional to its length. A short walk-between-buildings gap is
-basically free; a **~2 hour hole is the worst case** — too long to just sit and wait, too
-short to leave campus and do anything with. Beyond that peak, longer gaps get sharply
-*cheaper* again: 4 hours is enough for a real library session, 6–8 hours is enough to go home
-or to work and come back, so a single long block is treated as only mildly worse than no gap
-at all. Two classes at 08:00–10:00 and 18:00–20:00 (one 8-hour gap) therefore score much
-better than the same two classes at 10:00–12:00 and 14:00–16:00 (one 2-hour gap), and three
-classes with a single 6-hour gap score better than three classes with two 2-hour gaps —
-even though the latter has *less* total idle time.
+A gap's badness isn't proportional to its length, but it is always *non-decreasing* in
+length: a longer gap is never scored better than a shorter one, and no gap is ever scored
+better than none at all. A short walk-between-buildings gap is basically free; by a couple of
+hours it really hurts; past that, each extra idle minute matters less — another hour on top of
+an already-dead afternoon barely registers — but the cost never goes down, it only flattens
+out toward a cap. Two classes at 08:00–10:00 and 10:00–12:00 (no gap) therefore always beat
+the same two classes at 08:00–10:00 and 18:00–20:00 (one 8-hour gap), and three classes with a
+single 6-hour gap still score a little better than three classes with two 2-hour gaps (less
+total idle time consolidated into one block beats it fragmented into two) — but both cost
+strictly more than having no gap at all.
 
-`gapBadness()` (`src/domain/score.ts`) models this as a Gamma(shape=2)-shaped curve: it rises
-from zero, peaks at a 2-hour gap, and decays exponentially past it, rescaled so the peak
-itself equals 120 "minutes" — i.e. the worst-case gap costs exactly what a naive per-minute
-model would have charged, and every other length is discounted relative to that. The score
-itself has no special exemption for lunchtime or any other time of day; only a gap's length
-matters. If you specifically want lunch protected, that's the separate opt-in preference
-below — not a scoring nudge, but a hard block.
+`gapBadness()` (`src/domain/score.ts`) models this as the Gamma(shape=2) CDF: it rises from
+zero, climbs through the first couple of hours, then flattens out as it asymptotically
+approaches a cap of 120 "minutes" — i.e. the longest possible gap costs about what a naive
+per-minute model would have charged for a two-hour hole, and every other length is scored
+relative to that, but never below a shorter gap's cost. The score itself has no special
+exemption for lunchtime or any other time of day; only a gap's length matters. If you
+specifically want lunch protected, that's the separate opt-in preference below — not a scoring
+nudge, but a hard block.
 
 ### Blocking out lunch
 

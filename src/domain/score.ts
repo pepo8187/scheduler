@@ -15,7 +15,7 @@ export const WEIGHTS = {
   compactnessPerDayUsed: 30,
   compactnessPerUnusedWeekday: 30, // spread's mirror of compactnessPerDayUsed: the primary lever
   compactnessVarianceTiebreak: 0.0005, // variance is in minutes²; a secondary nudge only, never enough to add a day
-  gapsPerIdleMinute: 3, // applied to peak-weighted "badness" minutes (see gapBadness), not raw ones
+  gapsPerIdleMinute: 3, // applied to capped "badness" minutes (see gapBadness), not raw idle minutes
   dayWindowPerMinuteOutside: 4,
   maxPerDayPerExcessClass: 150,
 };
@@ -94,28 +94,27 @@ function compactnessTerm(byDay: Map<Day, Slot[]>, prefs: Prefs): ScoreTerm {
 }
 
 /**
- * A gap's badness isn't proportional to its length. A ~2 hour hole (`GAP_PEAK_MINUTES`) is
- * the worst case — too long to just sit and wait, too short to leave and do anything with —
- * so that's where the penalty peaks. Shorter gaps (a walk between buildings) are cheap, and
- * *longer* gaps get sharply cheaper again past the peak: 4 hours is enough to get real work
- * done at the library, 6-8 hours is enough to go home or to work and come back, so a single
- * long block is treated as only mildly worse than no gap at all — never as badly as the
- * 2-hour hole it contains would be on its own.
+ * A gap's badness isn't proportional to its length, but it must never *fall* as the gap grows
+ * — a longer hole is never a better outcome than a shorter one, let alone than no gap at all.
+ * A short walk-between-buildings gap (a few minutes) is basically free; by a couple of hours
+ * it really hurts; past that the marginal pain of each extra idle minute tapers off (another
+ * hour on top of an already-dead afternoon barely registers) but the total never goes down —
+ * it only approaches a cap.
  *
- * Modelled as a Gamma(shape=2) curve — rises roughly linearly from zero, peaks at
- * `2 * GAP_SHAPE_THETA`, decays exponentially after — rescaled so the peak itself equals
- * `GAP_PEAK_MINUTES`. That keeps `WEIGHTS.gapsPerIdleMinute` meaning the same thing it always
- * did ("cost per minute, at the worst-case gap length"); every other gap length is discounted
- * relative to that peak rather than counted minute-for-minute.
+ * Modelled as the Gamma(shape=2) CDF: it rises from zero, climbs through the first couple of
+ * hours, then flattens out as it asymptotically approaches `GAP_BADNESS_CAP` — the most a
+ * single gap, however long, can ever cost. That keeps `WEIGHTS.gapsPerIdleMinute` meaning
+ * roughly what it always did ("cost per minute, near the steepest part of the curve"), while
+ * guaranteeing gapBadness is non-decreasing in `minutes`.
  */
-export const GAP_PEAK_MINUTES = 120;
-const GAP_SHAPE_THETA = GAP_PEAK_MINUTES / 2;
-const GAP_PEAK_RAW = (GAP_PEAK_MINUTES / GAP_SHAPE_THETA) ** 2 * Math.exp(-GAP_PEAK_MINUTES / GAP_SHAPE_THETA);
+export const GAP_BADNESS_CAP = 120;
+const GAP_SHAPE_THETA = 60;
 
 export function gapBadness(minutes: number): number {
   if (minutes <= 0) return 0;
-  const raw = (minutes / GAP_SHAPE_THETA) ** 2 * Math.exp(-minutes / GAP_SHAPE_THETA);
-  return (GAP_PEAK_MINUTES * raw) / GAP_PEAK_RAW;
+  const x = minutes / GAP_SHAPE_THETA;
+  const cdf = 1 - Math.exp(-x) * (1 + x);
+  return GAP_BADNESS_CAP * cdf;
 }
 
 function gapsForDay(slots: Slot[]): { idleMinutes: number; badness: number } {
