@@ -76,21 +76,6 @@ export default function PreferencePanel() {
       </div>
 
       <div className="pref-block">
-        <span className="pref-block__label">Lunch buffer, exempt from the gaps penalty</span>
-        <div className="pref-row">
-          <input
-            type="number"
-            min={0}
-            max={180}
-            step={15}
-            value={prefs.lunchBufferMinutes}
-            onChange={(e) => actions.setPrefs({ lunchBufferMinutes: Number(e.target.value) })}
-          />
-          <span>minutes around midday</span>
-        </div>
-      </div>
-
-      <div className="pref-block">
         <label className="pref-row">
           <input
             type="checkbox"

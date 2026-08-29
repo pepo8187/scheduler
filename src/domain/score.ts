@@ -15,7 +15,7 @@ export const WEIGHTS = {
   compactnessPerDayUsed: 30,
   compactnessPerUnusedWeekday: 30, // spread's mirror of compactnessPerDayUsed: the primary lever
   compactnessVarianceTiebreak: 0.0005, // variance is in minutes²; a secondary nudge only, never enough to add a day
-  gapsPerIdleMinute: 3,
+  gapsPerIdleMinute: 3, // applied to peak-weighted "badness" minutes (see gapBadness), not raw ones
   dayWindowPerMinuteOutside: 4,
   maxPerDayPerExcessClass: 150,
 };
@@ -94,28 +94,58 @@ function compactnessTerm(events: CourseEvent[], prefs: Prefs): ScoreTerm {
   };
 }
 
-function gapMinutesForDay(slots: Slot[], lunchStart: number, lunchEnd: number): number {
+/**
+ * A gap's badness isn't proportional to its length. A ~2 hour hole (`GAP_PEAK_MINUTES`) is
+ * the worst case — too long to just sit and wait, too short to leave and do anything with —
+ * so that's where the penalty peaks. Shorter gaps (a walk between buildings) are cheap, and
+ * *longer* gaps get sharply cheaper again past the peak: 4 hours is enough to get real work
+ * done at the library, 6-8 hours is enough to go home or to work and come back, so a single
+ * long block is treated as only mildly worse than no gap at all — never as badly as the
+ * 2-hour hole it contains would be on its own.
+ *
+ * Modelled as a Gamma(shape=2) curve — rises roughly linearly from zero, peaks at
+ * `2 * GAP_SHAPE_THETA`, decays exponentially after — rescaled so the peak itself equals
+ * `GAP_PEAK_MINUTES`. That keeps `WEIGHTS.gapsPerIdleMinute` meaning the same thing it always
+ * did ("cost per minute, at the worst-case gap length"); every other gap length is discounted
+ * relative to that peak rather than counted minute-for-minute.
+ */
+const GAP_PEAK_MINUTES = 120;
+const GAP_SHAPE_THETA = GAP_PEAK_MINUTES / 2;
+const GAP_PEAK_RAW = (GAP_PEAK_MINUTES / GAP_SHAPE_THETA) ** 2 * Math.exp(-GAP_PEAK_MINUTES / GAP_SHAPE_THETA);
+
+export function gapBadness(minutes: number): number {
+  if (minutes <= 0) return 0;
+  const raw = (minutes / GAP_SHAPE_THETA) ** 2 * Math.exp(-minutes / GAP_SHAPE_THETA);
+  return (GAP_PEAK_MINUTES * raw) / GAP_PEAK_RAW;
+}
+
+function gapsForDay(slots: Slot[]): { idleMinutes: number; badness: number } {
   const sorted = [...slots].sort((a, b) => a.start - b.start);
-  let idle = 0;
+  let idleMinutes = 0;
+  let badness = 0;
   for (let i = 1; i < sorted.length; i++) {
     const gapStart = sorted[i - 1]!.end;
     const gapEnd = sorted[i]!.start;
     if (gapEnd <= gapStart) continue; // overlapping or touching: no dead time here
-    const exempt = Math.max(0, Math.min(gapEnd, lunchEnd) - Math.max(gapStart, lunchStart));
-    idle += Math.max(0, gapEnd - gapStart - exempt);
+    const length = gapEnd - gapStart;
+    idleMinutes += length;
+    badness += gapBadness(length);
   }
-  return idle;
+  return { idleMinutes, badness };
 }
 
 function gapsTerm(events: CourseEvent[], prefs: Prefs): ScoreTerm {
   const byDay = daySlots(events);
-  const lunchStart = 720 - prefs.lunchBufferMinutes / 2;
-  const lunchEnd = 720 + prefs.lunchBufferMinutes / 2;
 
   let idleMinutes = 0;
-  for (const slots of byDay.values()) idleMinutes += gapMinutesForDay(slots, lunchStart, lunchEnd);
+  let totalBadness = 0;
+  for (const slots of byDay.values()) {
+    const day = gapsForDay(slots);
+    idleMinutes += day.idleMinutes;
+    totalBadness += day.badness;
+  }
 
-  const cost = idleMinutes * prefs.gaps * WEIGHTS.gapsPerIdleMinute;
+  const cost = totalBadness * prefs.gaps * WEIGHTS.gapsPerIdleMinute;
   return { key: 'gaps', label: 'Dead time', cost, detail: `${idleMinutes} idle minute(s)` };
 }
 

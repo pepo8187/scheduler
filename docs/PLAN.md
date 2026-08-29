@@ -143,10 +143,15 @@ Scores the number of days used plus, on the spread side, the variance of per-day
 
 ### 3. Gaps — dead time between classes
 
-Slider, **Gaps are fine ←→ No dead time**. Penalises each idle minute between consecutive
-classes on the same day. High setting produces back-to-back blocks; low setting lets the
-solver use a two-hour hole to buy a better day count. A short lunch allowance (configurable,
-default 60 min around midday) is exempt so the optimizer does not eliminate lunch.
+Slider, **Gaps are fine ←→ No dead time**. Penalises idle time between consecutive classes on
+the same day, but not linearly by length: a ~2 hour gap is the worst case (too long to wait
+out, too short to leave and do anything with), and the penalty falls off sharply for gaps
+longer than that — 4+ hours is enough for a library session, 6-8 hours enough to go home or
+to work and come back, so a single long block is treated as only mildly worse than no gap at
+all (`gapBadness()` in `score.ts`, a Gamma(shape=2) curve peaking at 2 hours). High setting
+produces back-to-back blocks; low setting tolerates the occasional hole. There's no time-of-day
+exemption (no special "lunch window") — only a gap's length matters, so the user can eat
+whenever a gap happens to fall.
 
 ### 4. Day window — earliest start / latest end
 

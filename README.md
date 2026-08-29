@@ -38,7 +38,7 @@ how-it-works.
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm run test     # unit tests (vitest + jsdom) — 67 tests across parser/overlap/analysis/score/solver
+npm run test     # unit tests (vitest + jsdom) — 70 tests across parser/overlap/analysis/score/solver
 npm run build    # typecheck + production build
 ```
 
@@ -77,7 +77,7 @@ penalty terms (`src/domain/score.ts`), weighted so more important things always 
 | Seminar collisions | Any overlap involving a seminar (seminar↔seminar or seminar↔lecture) | 100,000 per pair |
 | Dropped lectures | A non-★ lecture dropped to honour a day off | 2,000 per lecture |
 | Compactness | Cram: days used. Spread: unused weekdays first, load-variance as a tiebreak | up to ~30/day |
-| Dead time | Idle minutes between classes on the same day, minus the lunch buffer | up to 3/minute |
+| Dead time | Idle time between classes on the same day, weighted by gap length (see below) | up to 3/peak-minute |
 | Day window | Minutes scheduled outside the requested start/end | 4/minute |
 | Max classes/day | Classes beyond the optional daily cap | 150/class |
 
@@ -85,6 +85,26 @@ A seminar collision always outranks a dropped lecture, which always outranks eve
 term — so the solver only ever trades comfort for comfort, never for a collision. Lecture ↔
 lecture overlaps are not scored at all: they're a fact of the export (see below), rendered as
 a badge, and never influence which seminar group gets picked.
+
+### Dead time isn't linear
+
+A gap's badness isn't proportional to its length. A short walk-between-buildings gap is
+basically free; a **~2 hour hole is the worst case** — too long to just sit and wait, too
+short to leave campus and do anything with. Beyond that peak, longer gaps get sharply
+*cheaper* again: 4 hours is enough for a real library session, 6–8 hours is enough to go home
+or to work and come back, so a single long block is treated as only mildly worse than no gap
+at all. Two classes at 08:00–10:00 and 18:00–20:00 (one 8-hour gap) therefore score much
+better than the same two classes at 10:00–12:00 and 14:00–16:00 (one 2-hour gap), and three
+classes with a single 6-hour gap score better than three classes with two 2-hour gaps —
+even though the latter has *less* total idle time.
+
+`gapBadness()` (`src/domain/score.ts`) models this as a Gamma(shape=2)-shaped curve: it rises
+from zero, peaks at a 2-hour gap, and decays exponentially past it, rescaled so the peak
+itself equals 120 "minutes" — i.e. the worst-case gap costs exactly what a naive per-minute
+model would have charged, and every other length is discounted relative to that. There's no
+special exemption for lunchtime or any other time of day; only a gap's length matters, so a
+midday seminar block is never penalised just for sitting where a fixed lunch window used to
+be.
 
 `src/domain/solver.ts` searches one variable per enabled subject-with-seminars (which group,
 or none) via MRV-ordered DFS with forward checking, keeping the best 10 by score. Non-★

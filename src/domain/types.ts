@@ -77,7 +77,6 @@ export interface Prefs {
   daysOff: Day[]; // hard constraint: no seminar group touching these days is considered
   compactness: number; // -1 (spread) .. 0 (neutral) .. +1 (cram)
   gaps: number; // 0 (gaps are fine) .. 1 (no dead time)
-  lunchBufferMinutes: number; // idle time around midday exempt from the gaps penalty
   dayWindow: DayWindow; // when the user wants to be at school; outside is soft-penalised
   maxClassesPerDay: number | null; // soft cap; null = off
 }
