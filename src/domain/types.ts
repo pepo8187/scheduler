@@ -1,3 +1,5 @@
+import type { Overlap } from './overlap';
+
 /**
  * Core domain model. Pure data — no React, no DOM types beyond what parsing needs.
  */
@@ -60,4 +62,77 @@ export interface Timetable {
   hours: HourRulerEntry[]; // <hodiny> rows, for rendering the hour ruler
   subjects: Subject[];
   unscheduled: UnscheduledCourse[];
+}
+
+// ---------------------------------------------------------------------------
+// Preferences — the user-facing control surface (docs/PLAN.md § Preferences)
+// ---------------------------------------------------------------------------
+
+export interface DayWindow {
+  start: number; // minutes from midnight, inclusive
+  end: number; // minutes from midnight, inclusive
+}
+
+export interface Prefs {
+  daysOff: Day[]; // hard constraint: no seminar group touching these days is considered
+  compactness: number; // -1 (spread) .. 0 (neutral) .. +1 (cram)
+  gaps: number; // 0 (gaps are fine) .. 1 (no dead time)
+  lunchBufferMinutes: number; // idle time around midday exempt from the gaps penalty
+  dayWindow: DayWindow; // when the user wants to be at school; outside is soft-penalised
+  maxClassesPerDay: number | null; // soft cap; null = off
+}
+
+// ---------------------------------------------------------------------------
+// Selection state — what the user has enabled, and which lecture is ★ required
+// ---------------------------------------------------------------------------
+
+export interface LectureSelection {
+  enabled: boolean;
+  required: boolean; // ★ priority: pins the lecture's day, blocks a day-off request
+}
+
+export interface SubjectSelection {
+  enabled: boolean;
+  lectures: Record<string, LectureSelection>; // CourseEvent.id -> selection
+  seminars: Record<string, boolean>; // CourseEvent.id -> enabled
+}
+
+/** Keyed by Subject.code. */
+export type Selection = Record<string, SubjectSelection>;
+
+// ---------------------------------------------------------------------------
+// Scoring & solutions
+// ---------------------------------------------------------------------------
+
+export type ScoreTermKey =
+  | 'seminarCollision'
+  | 'droppedLecture'
+  | 'compactness'
+  | 'gaps'
+  | 'dayWindow'
+  | 'maxPerDay';
+
+export interface ScoreTerm {
+  key: ScoreTermKey;
+  label: string;
+  cost: number; // weighted penalty contributed by this term (>= 0, lower is better)
+  detail: string; // short human-readable explanation
+}
+
+export interface Score {
+  total: number;
+  terms: ScoreTerm[];
+}
+
+/** One per enabled subject-with-seminars, plus the derived day-off lecture drops. */
+export interface Assignment {
+  seminarChoice: Record<string, string | null>; // Subject.code -> chosen seminar CourseEvent id, or null
+  droppedLectures: Set<string>; // CourseEvent ids of non-★ lectures dropped to satisfy a day off
+}
+
+export interface Solution {
+  assignment: Assignment;
+  events: CourseEvent[]; // every attended event: kept lectures + chosen seminars
+  overlaps: Overlap[]; // overlapping pairs among `events`, both lecture-lecture and seminar kinds
+  score: Score;
 }
