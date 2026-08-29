@@ -1,0 +1,156 @@
+/*
+ * Design tokens.
+ *
+ * Light is the default theme: warm, earthy, bronze-accented "Material You".
+ * Dark is a warm near-black counterpart, not a cold grey one. Every colour used
+ * anywhere in the app is declared here and only here, so the theme toggle is a
+ * single `data-theme` attribute flip on <html>.
+ */
+
+:root {
+  /* --- Surfaces & text (light) --- */
+  --bg: #f7f2ec;
+  --surface: #fffcf8;
+  --surface-alt: #efe6da;
+  --surface-sunken: #eae0d3;
+  --outline: #dccfc0;
+  --outline-strong: #c4b3a0;
+  --text: #3a2e24;
+  --text-muted: #7a6a5b;
+  --text-faint: #a2937f;
+
+  /* --- Accents --- */
+  --primary: #8c5e33;
+  --primary-hover: #744d29;
+  --on-primary: #fffcf8;
+  --primary-container: #f0dfc9;
+
+  /* --- Lectures: bronze / terracotta (fixed, given) --- */
+  --lecture-fill: #eadac6;
+  --lecture-fill-hover: #e3d0b6;
+  --lecture-accent: #8c5e33;
+  --lecture-text: #3a2e24;
+
+  /* --- Seminars: sage / olive (the thing we actually choose) --- */
+  --seminar-fill: #dce3d0;
+  --seminar-fill-hover: #d2dbc2;
+  --seminar-accent: #5f6f52;
+  --seminar-text: #2e3527;
+
+  /* --- Clash: burnt sienna, one visible step off the lecture family --- */
+  --clash-fill: #e8c4a8;
+  --clash-accent: #a8542b;
+  --clash-text: #402414;
+
+  /* --- Status --- */
+  --warn: #a8542b;
+  --warn-fill: #f6e2d2;
+  --ok: #5f6f52;
+  --ghost-outline: #cfc4b2;
+
+  /* --- Shape --- */
+  --r-lg: 16px;
+  --r-md: 12px;
+  --r-sm: 8px;
+  --r-pill: 999px;
+
+  /* --- Elevation: soft and warm, never a hard grey box-shadow --- */
+  --shadow-sm: 0 1px 2px rgba(74, 55, 38, 0.06), 0 1px 3px rgba(74, 55, 38, 0.05);
+  --shadow-md: 0 2px 6px rgba(74, 55, 38, 0.07), 0 6px 16px rgba(74, 55, 38, 0.06);
+  --shadow-lg: 0 4px 12px rgba(74, 55, 38, 0.09), 0 12px 32px rgba(74, 55, 38, 0.08);
+
+  /* --- Spacing & type --- */
+  --gap-xs: 4px;
+  --gap-sm: 8px;
+  --gap-md: 12px;
+  --gap-lg: 20px;
+  --gap-xl: 28px;
+
+  --font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, sans-serif;
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-md: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 20px;
+
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --bg: #191512;
+  --surface: #241e19;
+  --surface-alt: #2e2620;
+  --surface-sunken: #1f1a16;
+  --outline: #3d342c;
+  --outline-strong: #55493e;
+  --text: #f0e7dc;
+  --text-muted: #b3a392;
+  --text-faint: #8a7b6b;
+
+  --primary: #e0a96d;
+  --primary-hover: #ecbb85;
+  --on-primary: #2a1e12;
+  --primary-container: #3d2e1d;
+
+  --lecture-fill: #3a2b1d;
+  --lecture-fill-hover: #46341f;
+  --lecture-accent: #e0a96d;
+  --lecture-text: #f0e7dc;
+
+  --seminar-fill: #28311f;
+  --seminar-fill-hover: #313c26;
+  --seminar-accent: #a8c09a;
+  --seminar-text: #e8f0e2;
+
+  --clash-fill: #4a2a1a;
+  --clash-accent: #d97a4e;
+  --clash-text: #f7e4d8;
+
+  --warn: #d97a4e;
+  --warn-fill: #3a2318;
+  --ok: #a8c09a;
+  --ghost-outline: #4a3f35;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.34), 0 6px 16px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.36);
+
+  color-scheme: dark;
+}
+
+/* --- Reset --- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  font-size: var(--fs-md);
+  line-height: 1.45;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}

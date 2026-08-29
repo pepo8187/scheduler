@@ -1,0 +1,161 @@
+/* Layout shell. Component-specific rules arrive with their components. */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 100vh;
+}
+
+/* --- Header --- */
+
+.app__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-lg);
+  padding: var(--gap-md) var(--gap-xl);
+  background: var(--surface);
+  border-bottom: 1px solid var(--outline);
+}
+
+.app__title {
+  margin: 0;
+  font-size: var(--fs-xl);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.app__subtitle {
+  margin: 2px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  padding: 8px 16px;
+  background: var(--surface-alt);
+  color: var(--text);
+  border: 1px solid var(--outline);
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.theme-toggle:hover {
+  background: var(--primary-container);
+  border-color: var(--outline-strong);
+}
+
+.theme-toggle__label {
+  font-size: var(--fs-sm);
+  font-weight: 550;
+}
+
+/* --- Body --- */
+
+.app__body {
+  display: flex;
+  flex: 1;
+  gap: var(--gap-lg);
+  padding: var(--gap-lg) var(--gap-xl);
+  align-items: flex-start;
+  min-height: 0;
+}
+
+.app__sidebar {
+  flex: 0 0 320px;
+  max-width: 320px;
+}
+
+.app__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-lg);
+  min-width: 0;
+}
+
+/* --- Panels --- */
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--outline);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--gap-lg);
+}
+
+.panel--grow {
+  flex: 1;
+}
+
+.panel__title {
+  margin: 0 0 var(--gap-md);
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.placeholder {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: var(--fs-sm);
+}
+
+/* --- Legend --- */
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-md) var(--gap-lg);
+  margin-bottom: var(--gap-md);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-sm);
+}
+
+.legend__swatch {
+  width: 22px;
+  height: 14px;
+  border-radius: var(--r-sm);
+  border-left: 3px solid;
+}
+
+.legend__swatch--lecture {
+  background: var(--lecture-fill);
+  border-left-color: var(--lecture-accent);
+}
+
+.legend__swatch--seminar {
+  background: var(--seminar-fill);
+  border-left-color: var(--seminar-accent);
+}
+
+.legend__swatch--clash {
+  background: var(--clash-fill);
+  border-left-color: var(--clash-accent);
+}
+
+@media (max-width: 900px) {
+  .app__body {
+    flex-direction: column;
+    padding: var(--gap-md);
+  }
+
+  .app__sidebar {
+    flex: 1 1 auto;
+    max-width: none;
+    width: 100%;
+  }
+}

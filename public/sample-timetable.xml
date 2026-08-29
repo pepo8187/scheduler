@@ -1,0 +1,477 @@
+<rozvrh>
+
+<minhod>480</minhod>
+<maxhod>1200</maxhod>
+<hodiny>
+	<hodina><od>8:00</od><do>8:50</do></hodina>
+	<hodina><od>9:00</od><do>9:50</do></hodina>
+	<hodina><od>10:00</od><do>10:50</do></hodina>
+	<hodina><od>11:00</od><do>11:50</do></hodina>
+	<hodina><od>12:00</od><do>12:50</do></hodina>
+	<hodina><od>13:00</od><do>13:50</do></hodina>
+	<hodina><od>14:00</od><do>14:50</do></hodina>
+	<hodina><od>15:00</od><do>15:50</do></hodina>
+	<hodina><od>16:00</od><do>16:50</do></hodina>
+	<hodina><od>17:00</od><do>17:50</do></hodina>
+	<hodina><od>18:00</od><do>18:50</do></hodina>
+	<hodina><od>19:00</od><do>19:50</do></hodina>
+
+</hodiny>
+<tabulka>
+<den id="Po" rows="1">
+<radek num="1">
+
+	<slot pdiff="13" diff="20" odcas="08:00" docas="09:40"><mistnosti><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost></mistnosti><akce><kod>LJ601/01</kod><nazev>Latina pro nelatináře I</nazev><predmetid>1758911</predmetid><fakulta_url>phil</fakulta_url><obdobi_url>podzim2026</obdobi_url></akce>
+	<poznamka id="1" />
+	<ucitele><ucitel><ucitelid>262845</ucitelid><uciteljmeno>P. Ševčík</uciteljmeno></ucitel><ucitel><ucitelid>262845</ucitelid><uciteljmeno>P. Ševčík</uciteljmeno></ucitel><ucitel><ucitelid>262845</ucitelid><uciteljmeno>P. Ševčík</uciteljmeno></ucitel><ucitel><ucitelid>262845</ucitelid><uciteljmeno>P. Ševčík</uciteljmeno></ucitel><ucitel><ucitelid>262845</ucitelid><uciteljmeno>P. Ševčík</uciteljmeno></ucitel><ucitel><ucitelid>262845</ucitelid><uciteljmeno>P. Ševčík</uciteljmeno></ucitel><ucitel><ucitelid>262845</ucitelid><uciteljmeno>P. Ševčík</uciteljmeno></ucitel><ucitel><ucitelid>262845</ucitelid><uciteljmeno>P. Ševčík</uciteljmeno></ucitel><ucitel><ucitelid>262845</ucitelid><uciteljmeno>P. Ševčík</uciteljmeno></ucitel><ucitel><ucitelid>262845</ucitelid><uciteljmeno>P. Ševčík</uciteljmeno></ucitel><ucitel><ucitelid>262845</ucitelid><uciteljmeno>P. Ševčík</uciteljmeno></ucitel><ucitel><ucitelid>262845</ucitelid><uciteljmeno>P. Ševčík</uciteljmeno></ucitel></ucitele>
+	</slot>
+	<break pdiff="2" diff="4" odcas="9:40" docas="10:00"/>
+
+	<slot pdiff="13" diff="20" odcas="10:00" docas="11:40"><mistnosti><mistnost><mistnostozn>B2.42</mistnostozn>
+				<mistnostid>13058</mistnostid></mistnost><mistnost><mistnostozn>B2.42</mistnostozn>
+				<mistnostid>13058</mistnostid></mistnost><mistnost><mistnostozn>B2.42</mistnostozn>
+				<mistnostid>13058</mistnostid></mistnost><mistnost><mistnostozn>B2.42</mistnostozn>
+				<mistnostid>13058</mistnostid></mistnost><mistnost><mistnostozn>B2.42</mistnostozn>
+				<mistnostid>13058</mistnostid></mistnost><mistnost><mistnostozn>B2.42</mistnostozn>
+				<mistnostid>13058</mistnostid></mistnost><mistnost><mistnostozn>B2.42</mistnostozn>
+				<mistnostid>13058</mistnostid></mistnost><mistnost><mistnostozn>B2.42</mistnostozn>
+				<mistnostid>13058</mistnostid></mistnost><mistnost><mistnostozn>B2.42</mistnostozn>
+				<mistnostid>13058</mistnostid></mistnost><mistnost><mistnostozn>B2.42</mistnostozn>
+				<mistnostid>13058</mistnostid></mistnost><mistnost><mistnostozn>B2.42</mistnostozn>
+				<mistnostid>13058</mistnostid></mistnost><mistnost><mistnostozn>B2.42</mistnostozn>
+				<mistnostid>13058</mistnostid></mistnost></mistnosti><akce><kod>LJ601/02</kod><nazev>Latina pro nelatináře I</nazev><predmetid>1758911</predmetid><fakulta_url>phil</fakulta_url><obdobi_url>podzim2026</obdobi_url></akce>
+	<poznamka id="2" />
+	<ucitele><ucitel><ucitelid>262845</ucitelid><uciteljmeno>P. Ševčík</uciteljmeno></ucitel><ucitel><ucitelid>262845</ucitelid><uciteljmeno>P. Ševčík</uciteljmeno></ucitel><ucitel><ucitelid>262845</ucitelid><uciteljmeno>P. Ševčík</uciteljmeno></ucitel><ucitel><ucitelid>262845</ucitelid><uciteljmeno>P. Ševčík</uciteljmeno></ucitel><ucitel><ucitelid>262845</ucitelid><uciteljmeno>P. Ševčík</uciteljmeno></ucitel><ucitel><ucitelid>262845</ucitelid><uciteljmeno>P. Ševčík</uciteljmeno></ucitel><ucitel><ucitelid>262845</ucitelid><uciteljmeno>P. Ševčík</uciteljmeno></ucitel><ucitel><ucitelid>262845</ucitelid><uciteljmeno>P. Ševčík</uciteljmeno></ucitel><ucitel><ucitelid>262845</ucitelid><uciteljmeno>P. Ševčík</uciteljmeno></ucitel><ucitel><ucitelid>262845</ucitelid><uciteljmeno>P. Ševčík</uciteljmeno></ucitel><ucitel><ucitelid>262845</ucitelid><uciteljmeno>P. Ševčík</uciteljmeno></ucitel><ucitel><ucitelid>262845</ucitelid><uciteljmeno>P. Ševčík</uciteljmeno></ucitel></ucitele>
+	</slot>
+	<break pdiff="2" diff="4" odcas="11:40" docas="12:00"/>
+	<break pdiff="8" diff="12" odcas="12:00" docas="13:00"/>
+	<break pdiff="8" diff="12" odcas="13:00" docas="14:00"/>
+	<break pdiff="8" diff="12" odcas="14:00" docas="15:00"/>
+	<break pdiff="8" diff="12" odcas="15:00" docas="16:00"/>
+
+	<slot pdiff="13" diff="20" odcas="16:00" docas="17:40"><mistnosti><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost></mistnosti><akce><kod>LJ601/04</kod><nazev>Latina pro nelatináře I</nazev><predmetid>1758911</predmetid><fakulta_url>phil</fakulta_url><obdobi_url>podzim2026</obdobi_url></akce>
+	<poznamka id="3" />
+	<ucitele><ucitel><ucitelid>195333</ucitelid><uciteljmeno>L. Valasová</uciteljmeno></ucitel><ucitel><ucitelid>195333</ucitelid><uciteljmeno>L. Valasová</uciteljmeno></ucitel><ucitel><ucitelid>195333</ucitelid><uciteljmeno>L. Valasová</uciteljmeno></ucitel><ucitel><ucitelid>195333</ucitelid><uciteljmeno>L. Valasová</uciteljmeno></ucitel><ucitel><ucitelid>195333</ucitelid><uciteljmeno>L. Valasová</uciteljmeno></ucitel><ucitel><ucitelid>195333</ucitelid><uciteljmeno>L. Valasová</uciteljmeno></ucitel><ucitel><ucitelid>195333</ucitelid><uciteljmeno>L. Valasová</uciteljmeno></ucitel><ucitel><ucitelid>195333</ucitelid><uciteljmeno>L. Valasová</uciteljmeno></ucitel><ucitel><ucitelid>195333</ucitelid><uciteljmeno>L. Valasová</uciteljmeno></ucitel><ucitel><ucitelid>195333</ucitelid><uciteljmeno>L. Valasová</uciteljmeno></ucitel><ucitel><ucitelid>195333</ucitelid><uciteljmeno>L. Valasová</uciteljmeno></ucitel><ucitel><ucitelid>195333</ucitelid><uciteljmeno>L. Valasová</uciteljmeno></ucitel></ucitele>
+	</slot>
+	<break pdiff="2" diff="4" odcas="17:40" docas="18:00"/>
+	<break pdiff="8" diff="12" odcas="18:00" docas="19:00"/>
+	<break pdiff="8" diff="12" odcas="19:00" docas="20:00"/>
+</radek>
+</den>
+<den id="Út" rows="3">
+<radek num="1">
+
+	<slot pdiff="16" diff="24" odcas="08:00" docas="09:50"><mistnosti><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost></mistnosti><akce><kod>MV008</kod><nazev>Algebra I</nazev><predmetid>1726847</predmetid><fakulta_url>fi</fakulta_url><obdobi_url>podzim2026</obdobi_url></akce>
+	<poznamka id="4" />
+	<ucitele><ucitel><ucitelid>2906</ucitelid><uciteljmeno>M. Kunc</uciteljmeno></ucitel><ucitel><ucitelid>2906</ucitelid><uciteljmeno>M. Kunc</uciteljmeno></ucitel><ucitel><ucitelid>2906</ucitelid><uciteljmeno>M. Kunc</uciteljmeno></ucitel><ucitel><ucitelid>2906</ucitelid><uciteljmeno>M. Kunc</uciteljmeno></ucitel><ucitel><ucitelid>2906</ucitelid><uciteljmeno>M. Kunc</uciteljmeno></ucitel><ucitel><ucitelid>2906</ucitelid><uciteljmeno>M. Kunc</uciteljmeno></ucitel><ucitel><ucitelid>2906</ucitelid><uciteljmeno>M. Kunc</uciteljmeno></ucitel><ucitel><ucitelid>2906</ucitelid><uciteljmeno>M. Kunc</uciteljmeno></ucitel><ucitel><ucitelid>2906</ucitelid><uciteljmeno>M. Kunc</uciteljmeno></ucitel><ucitel><ucitelid>2906</ucitelid><uciteljmeno>M. Kunc</uciteljmeno></ucitel><ucitel><ucitelid>2906</ucitelid><uciteljmeno>M. Kunc</uciteljmeno></ucitel><ucitel><ucitelid>2906</ucitelid><uciteljmeno>M. Kunc</uciteljmeno></ucitel><ucitel><ucitelid>2906</ucitelid><uciteljmeno>M. Kunc</uciteljmeno></ucitel></ucitele>
+	</slot>
+
+	<slot pdiff="16" diff="24" odcas="10:00" docas="11:50"><mistnosti><mistnost><mistnostozn>A217</mistnostozn>
+				<mistnostid>12965</mistnostid></mistnost><mistnost><mistnostozn>A217</mistnostozn>
+				<mistnostid>12965</mistnostid></mistnost><mistnost><mistnostozn>A217</mistnostozn>
+				<mistnostid>12965</mistnostid></mistnost><mistnost><mistnostozn>A217</mistnostozn>
+				<mistnostid>12965</mistnostid></mistnost><mistnost><mistnostozn>A217</mistnostozn>
+				<mistnostid>12965</mistnostid></mistnost><mistnost><mistnostozn>A217</mistnostozn>
+				<mistnostid>12965</mistnostid></mistnost><mistnost><mistnostozn>A217</mistnostozn>
+				<mistnostid>12965</mistnostid></mistnost><mistnost><mistnostozn>A217</mistnostozn>
+				<mistnostid>12965</mistnostid></mistnost><mistnost><mistnostozn>A217</mistnostozn>
+				<mistnostid>12965</mistnostid></mistnost><mistnost><mistnostozn>A217</mistnostozn>
+				<mistnostid>12965</mistnostid></mistnost><mistnost><mistnostozn>A217</mistnostozn>
+				<mistnostid>12965</mistnostid></mistnost><mistnost><mistnostozn>A217</mistnostozn>
+				<mistnostid>12965</mistnostid></mistnost><mistnost><mistnostozn>A217</mistnostozn>
+				<mistnostid>12965</mistnostid></mistnost></mistnosti><akce><kod>MA012</kod><nazev>Statistics II</nazev><predmetid>1726840</predmetid><fakulta_url>fi</fakulta_url><obdobi_url>podzim2026</obdobi_url></akce>
+	<poznamka id="5" />
+	<ucitele><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel></ucitele>
+	</slot>
+
+	<slot pdiff="16" diff="24" odcas="12:00" docas="13:50"><mistnosti><mistnost><mistnostozn>A319</mistnostozn>
+				<mistnostid>12963</mistnostid></mistnost><mistnost><mistnostozn>A319</mistnostozn>
+				<mistnostid>12963</mistnostid></mistnost><mistnost><mistnostozn>A319</mistnostozn>
+				<mistnostid>12963</mistnostid></mistnost><mistnost><mistnostozn>A319</mistnostozn>
+				<mistnostid>12963</mistnostid></mistnost><mistnost><mistnostozn>A319</mistnostozn>
+				<mistnostid>12963</mistnostid></mistnost><mistnost><mistnostozn>A319</mistnostozn>
+				<mistnostid>12963</mistnostid></mistnost><mistnost><mistnostozn>A319</mistnostozn>
+				<mistnostid>12963</mistnostid></mistnost><mistnost><mistnostozn>A319</mistnostozn>
+				<mistnostid>12963</mistnostid></mistnost><mistnost><mistnostozn>A319</mistnostozn>
+				<mistnostid>12963</mistnostid></mistnost><mistnost><mistnostozn>A319</mistnostozn>
+				<mistnostid>12963</mistnostid></mistnost><mistnost><mistnostozn>A319</mistnostozn>
+				<mistnostid>12963</mistnostid></mistnost><mistnost><mistnostozn>A319</mistnostozn>
+				<mistnostid>12963</mistnostid></mistnost><mistnost><mistnostozn>A319</mistnostozn>
+				<mistnostid>12963</mistnostid></mistnost></mistnosti><akce><kod>IA159</kod><nazev>FM for Software Analysis</nazev><predmetid>1726805</predmetid><fakulta_url>fi</fakulta_url><obdobi_url>podzim2026</obdobi_url></akce>
+	<poznamka id="6" />
+	<ucitele><ucitel><ucitelid>3366</ucitelid><uciteljmeno>J. Strejček</uciteljmeno></ucitel><ucitel><ucitelid>3366</ucitelid><uciteljmeno>J. Strejček</uciteljmeno></ucitel><ucitel><ucitelid>3366</ucitelid><uciteljmeno>J. Strejček</uciteljmeno></ucitel><ucitel><ucitelid>3366</ucitelid><uciteljmeno>J. Strejček</uciteljmeno></ucitel><ucitel><ucitelid>3366</ucitelid><uciteljmeno>J. Strejček</uciteljmeno></ucitel><ucitel><ucitelid>3366</ucitelid><uciteljmeno>J. Strejček</uciteljmeno></ucitel><ucitel><ucitelid>3366</ucitelid><uciteljmeno>J. Strejček</uciteljmeno></ucitel><ucitel><ucitelid>3366</ucitelid><uciteljmeno>J. Strejček</uciteljmeno></ucitel><ucitel><ucitelid>3366</ucitelid><uciteljmeno>J. Strejček</uciteljmeno></ucitel><ucitel><ucitelid>3366</ucitelid><uciteljmeno>J. Strejček</uciteljmeno></ucitel><ucitel><ucitelid>3366</ucitelid><uciteljmeno>J. Strejček</uciteljmeno></ucitel><ucitel><ucitelid>3366</ucitelid><uciteljmeno>J. Strejček</uciteljmeno></ucitel><ucitel><ucitelid>3366</ucitelid><uciteljmeno>J. Strejček</uciteljmeno></ucitel></ucitele>
+	</slot>
+	<break pdiff="8" diff="12" odcas="14:00" docas="15:00"/>
+	<break pdiff="8" diff="12" odcas="15:00" docas="16:00"/>
+	<break pdiff="8" diff="12" odcas="16:00" docas="17:00"/>
+	<break pdiff="8" diff="12" odcas="17:00" docas="18:00"/>
+	<break pdiff="8" diff="12" odcas="18:00" docas="19:00"/>
+	<break pdiff="8" diff="12" odcas="19:00" docas="20:00"/>
+</radek>
+<radek num="2">
+	<break pdiff="8" diff="12" odcas="8:00" docas="9:00"/>
+	<break pdiff="8" diff="12" odcas="9:00" docas="10:00"/>
+
+	<slot pdiff="16" diff="24" odcas="10:00" docas="11:50"><mistnosti><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost></mistnosti><akce><kod>MV008/01</kod><nazev>Algebra I</nazev><predmetid>1726847</predmetid><fakulta_url>fi</fakulta_url><obdobi_url>podzim2026</obdobi_url></akce>
+	<poznamka id="5" />
+	<ucitele><ucitel><ucitelid>2906</ucitelid><uciteljmeno>M. Kunc</uciteljmeno></ucitel><ucitel><ucitelid>2906</ucitelid><uciteljmeno>M. Kunc</uciteljmeno></ucitel><ucitel><ucitelid>2906</ucitelid><uciteljmeno>M. Kunc</uciteljmeno></ucitel><ucitel><ucitelid>2906</ucitelid><uciteljmeno>M. Kunc</uciteljmeno></ucitel><ucitel><ucitelid>2906</ucitelid><uciteljmeno>M. Kunc</uciteljmeno></ucitel><ucitel><ucitelid>2906</ucitelid><uciteljmeno>M. Kunc</uciteljmeno></ucitel><ucitel><ucitelid>2906</ucitelid><uciteljmeno>M. Kunc</uciteljmeno></ucitel><ucitel><ucitelid>2906</ucitelid><uciteljmeno>M. Kunc</uciteljmeno></ucitel><ucitel><ucitelid>2906</ucitelid><uciteljmeno>M. Kunc</uciteljmeno></ucitel><ucitel><ucitelid>2906</ucitelid><uciteljmeno>M. Kunc</uciteljmeno></ucitel><ucitel><ucitelid>2906</ucitelid><uciteljmeno>M. Kunc</uciteljmeno></ucitel><ucitel><ucitelid>2906</ucitelid><uciteljmeno>M. Kunc</uciteljmeno></ucitel><ucitel><ucitelid>2906</ucitelid><uciteljmeno>M. Kunc</uciteljmeno></ucitel></ucitele>
+	</slot>
+
+	<slot pdiff="16" diff="24" odcas="12:00" docas="13:50"><mistnosti><mistnost><mistnostozn>A318</mistnostozn>
+				<mistnostid>12964</mistnostid></mistnost><mistnost><mistnostozn>A318</mistnostozn>
+				<mistnostid>12964</mistnostid></mistnost><mistnost><mistnostozn>A318</mistnostozn>
+				<mistnostid>12964</mistnostid></mistnost><mistnost><mistnostozn>A318</mistnostozn>
+				<mistnostid>12964</mistnostid></mistnost><mistnost><mistnostozn>A318</mistnostozn>
+				<mistnostid>12964</mistnostid></mistnost><mistnost><mistnostozn>A318</mistnostozn>
+				<mistnostid>12964</mistnostid></mistnost><mistnost><mistnostozn>A318</mistnostozn>
+				<mistnostid>12964</mistnostid></mistnost><mistnost><mistnostozn>A318</mistnostozn>
+				<mistnostid>12964</mistnostid></mistnost><mistnost><mistnostozn>A318</mistnostozn>
+				<mistnostid>12964</mistnostid></mistnost><mistnost><mistnostozn>A318</mistnostozn>
+				<mistnostid>12964</mistnostid></mistnost><mistnost><mistnostozn>A318</mistnostozn>
+				<mistnostid>12964</mistnostid></mistnost><mistnost><mistnostozn>A318</mistnostozn>
+				<mistnostid>12964</mistnostid></mistnost><mistnost><mistnostozn>A318</mistnostozn>
+				<mistnostid>12964</mistnostid></mistnost></mistnosti><akce><kod>MA010</kod><nazev>Graph Theory</nazev><predmetid>1726839</predmetid><fakulta_url>fi</fakulta_url><obdobi_url>podzim2026</obdobi_url></akce>
+	<poznamka id="6" />
+	<ucitele><ucitel><ucitelid>168881</ucitelid><uciteljmeno>P. Hliněný</uciteljmeno></ucitel><ucitel><ucitelid>168881</ucitelid><uciteljmeno>P. Hliněný</uciteljmeno></ucitel><ucitel><ucitelid>168881</ucitelid><uciteljmeno>P. Hliněný</uciteljmeno></ucitel><ucitel><ucitelid>168881</ucitelid><uciteljmeno>P. Hliněný</uciteljmeno></ucitel><ucitel><ucitelid>168881</ucitelid><uciteljmeno>P. Hliněný</uciteljmeno></ucitel><ucitel><ucitelid>168881</ucitelid><uciteljmeno>P. Hliněný</uciteljmeno></ucitel><ucitel><ucitelid>168881</ucitelid><uciteljmeno>P. Hliněný</uciteljmeno></ucitel><ucitel><ucitelid>168881</ucitelid><uciteljmeno>P. Hliněný</uciteljmeno></ucitel><ucitel><ucitelid>168881</ucitelid><uciteljmeno>P. Hliněný</uciteljmeno></ucitel><ucitel><ucitelid>168881</ucitelid><uciteljmeno>P. Hliněný</uciteljmeno></ucitel><ucitel><ucitelid>168881</ucitelid><uciteljmeno>P. Hliněný</uciteljmeno></ucitel><ucitel><ucitelid>168881</ucitelid><uciteljmeno>P. Hliněný</uciteljmeno></ucitel><ucitel><ucitelid>168881</ucitelid><uciteljmeno>P. Hliněný</uciteljmeno></ucitel></ucitele>
+	</slot>
+	<break pdiff="8" diff="12" odcas="14:00" docas="15:00"/>
+	<break pdiff="8" diff="12" odcas="15:00" docas="16:00"/>
+	<break pdiff="8" diff="12" odcas="16:00" docas="17:00"/>
+	<break pdiff="8" diff="12" odcas="17:00" docas="18:00"/>
+	<break pdiff="8" diff="12" odcas="18:00" docas="19:00"/>
+	<break pdiff="8" diff="12" odcas="19:00" docas="20:00"/>
+</radek>
+<radek num="3">
+	<break pdiff="8" diff="12" odcas="8:00" docas="9:00"/>
+	<break pdiff="8" diff="12" odcas="9:00" docas="10:00"/>
+	<break pdiff="8" diff="12" odcas="10:00" docas="11:00"/>
+	<break pdiff="8" diff="12" odcas="11:00" docas="12:00"/>
+
+	<slot pdiff="16" diff="24" odcas="12:00" docas="13:50"><mistnosti><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost></mistnosti><akce><kod>MA012/03</kod><nazev>Statistics II</nazev><predmetid>1726840</predmetid><fakulta_url>fi</fakulta_url><obdobi_url>podzim2026</obdobi_url></akce>
+	<poznamka id="6" />
+	<ucitele><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel></ucitele>
+	</slot>
+	<break pdiff="8" diff="12" odcas="14:00" docas="15:00"/>
+	<break pdiff="8" diff="12" odcas="15:00" docas="16:00"/>
+	<break pdiff="8" diff="12" odcas="16:00" docas="17:00"/>
+	<break pdiff="8" diff="12" odcas="17:00" docas="18:00"/>
+	<break pdiff="8" diff="12" odcas="18:00" docas="19:00"/>
+	<break pdiff="8" diff="12" odcas="19:00" docas="20:00"/>
+</radek>
+</den>
+<den id="St" rows="1">
+<radek num="1">
+
+	<slot pdiff="16" diff="24" odcas="08:00" docas="09:50"><mistnosti><mistnost><mistnostozn>C122</mistnostozn>
+				<mistnostid>14318</mistnostid></mistnost><mistnost><mistnostozn>C122</mistnostozn>
+				<mistnostid>14318</mistnostid></mistnost><mistnost><mistnostozn>C122</mistnostozn>
+				<mistnostid>14318</mistnostid></mistnost><mistnost><mistnostozn>C122</mistnostozn>
+				<mistnostid>14318</mistnostid></mistnost><mistnost><mistnostozn>C122</mistnostozn>
+				<mistnostid>14318</mistnostid></mistnost><mistnost><mistnostozn>C122</mistnostozn>
+				<mistnostid>14318</mistnostid></mistnost><mistnost><mistnostozn>C122</mistnostozn>
+				<mistnostid>14318</mistnostid></mistnost><mistnost><mistnostozn>C122</mistnostozn>
+				<mistnostid>14318</mistnostid></mistnost><mistnost><mistnostozn>C122</mistnostozn>
+				<mistnostid>14318</mistnostid></mistnost><mistnost><mistnostozn>C122</mistnostozn>
+				<mistnostid>14318</mistnostid></mistnost><mistnost><mistnostozn>C122</mistnostozn>
+				<mistnostid>14318</mistnostid></mistnost><mistnost><mistnostozn>C122</mistnostozn>
+				<mistnostid>14318</mistnostid></mistnost><mistnost><mistnostozn>C122</mistnostozn>
+				<mistnostid>14318</mistnostid></mistnost></mistnosti><akce><kod>MA012/04</kod><nazev>Statistics II</nazev><predmetid>1726840</predmetid><fakulta_url>fi</fakulta_url><obdobi_url>podzim2026</obdobi_url></akce>
+	<poznamka id="7" />
+	<ucitele><ucitel><ucitelid>568069</ucitelid><uciteljmeno>D. Belobrad</uciteljmeno></ucitel><ucitel><ucitelid>568069</ucitelid><uciteljmeno>D. Belobrad</uciteljmeno></ucitel><ucitel><ucitelid>568069</ucitelid><uciteljmeno>D. Belobrad</uciteljmeno></ucitel><ucitel><ucitelid>568069</ucitelid><uciteljmeno>D. Belobrad</uciteljmeno></ucitel><ucitel><ucitelid>568069</ucitelid><uciteljmeno>D. Belobrad</uciteljmeno></ucitel><ucitel><ucitelid>568069</ucitelid><uciteljmeno>D. Belobrad</uciteljmeno></ucitel><ucitel><ucitelid>568069</ucitelid><uciteljmeno>D. Belobrad</uciteljmeno></ucitel><ucitel><ucitelid>568069</ucitelid><uciteljmeno>D. Belobrad</uciteljmeno></ucitel><ucitel><ucitelid>568069</ucitelid><uciteljmeno>D. Belobrad</uciteljmeno></ucitel><ucitel><ucitelid>568069</ucitelid><uciteljmeno>D. Belobrad</uciteljmeno></ucitel><ucitel><ucitelid>568069</ucitelid><uciteljmeno>D. Belobrad</uciteljmeno></ucitel><ucitel><ucitelid>568069</ucitelid><uciteljmeno>D. Belobrad</uciteljmeno></ucitel><ucitel><ucitelid>568069</ucitelid><uciteljmeno>D. Belobrad</uciteljmeno></ucitel></ucitele>
+	</slot>
+	<break pdiff="8" diff="12" odcas="10:00" docas="11:00"/>
+	<break pdiff="8" diff="12" odcas="11:00" docas="12:00"/>
+
+	<slot pdiff="16" diff="24" odcas="12:00" docas="13:50"><mistnosti><mistnost><mistnostozn>A319</mistnostozn>
+				<mistnostid>12963</mistnostid></mistnost><mistnost><mistnostozn>A319</mistnostozn>
+				<mistnostid>12963</mistnostid></mistnost><mistnost><mistnostozn>A319</mistnostozn>
+				<mistnostid>12963</mistnostid></mistnost><mistnost><mistnostozn>A319</mistnostozn>
+				<mistnostid>12963</mistnostid></mistnost><mistnost><mistnostozn>A319</mistnostozn>
+				<mistnostid>12963</mistnostid></mistnost><mistnost><mistnostozn>A319</mistnostozn>
+				<mistnostid>12963</mistnostid></mistnost><mistnost><mistnostozn>A319</mistnostozn>
+				<mistnostid>12963</mistnostid></mistnost><mistnost><mistnostozn>A319</mistnostozn>
+				<mistnostid>12963</mistnostid></mistnost><mistnost><mistnostozn>A319</mistnostozn>
+				<mistnostid>12963</mistnostid></mistnost><mistnost><mistnostozn>A319</mistnostozn>
+				<mistnostid>12963</mistnostid></mistnost><mistnost><mistnostozn>A319</mistnostozn>
+				<mistnostid>12963</mistnostid></mistnost><mistnost><mistnostozn>A319</mistnostozn>
+				<mistnostid>12963</mistnostid></mistnost><mistnost><mistnostozn>A319</mistnostozn>
+				<mistnostid>12963</mistnostid></mistnost></mistnosti><akce><kod>IA012</kod><nazev>Složitost</nazev><predmetid>1726796</predmetid><fakulta_url>fi</fakulta_url><obdobi_url>podzim2026</obdobi_url></akce>
+	<poznamka id="8" />
+	<ucitele><ucitel><ucitelid>1419</ucitelid><uciteljmeno>I. Černá</uciteljmeno></ucitel><ucitel><ucitelid>1419</ucitelid><uciteljmeno>I. Černá</uciteljmeno></ucitel><ucitel><ucitelid>1419</ucitelid><uciteljmeno>I. Černá</uciteljmeno></ucitel><ucitel><ucitelid>1419</ucitelid><uciteljmeno>I. Černá</uciteljmeno></ucitel><ucitel><ucitelid>1419</ucitelid><uciteljmeno>I. Černá</uciteljmeno></ucitel><ucitel><ucitelid>1419</ucitelid><uciteljmeno>I. Černá</uciteljmeno></ucitel><ucitel><ucitelid>1419</ucitelid><uciteljmeno>I. Černá</uciteljmeno></ucitel><ucitel><ucitelid>1419</ucitelid><uciteljmeno>I. Černá</uciteljmeno></ucitel><ucitel><ucitelid>1419</ucitelid><uciteljmeno>I. Černá</uciteljmeno></ucitel><ucitel><ucitelid>1419</ucitelid><uciteljmeno>I. Černá</uciteljmeno></ucitel><ucitel><ucitelid>1419</ucitelid><uciteljmeno>I. Černá</uciteljmeno></ucitel><ucitel><ucitelid>1419</ucitelid><uciteljmeno>I. Černá</uciteljmeno></ucitel><ucitel><ucitelid>1419</ucitelid><uciteljmeno>I. Černá</uciteljmeno></ucitel></ucitele>
+	</slot>
+	<break pdiff="8" diff="12" odcas="14:00" docas="15:00"/>
+	<break pdiff="8" diff="12" odcas="15:00" docas="16:00"/>
+
+	<slot pdiff="13" diff="20" odcas="16:00" docas="17:40"><mistnosti><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost></mistnosti><akce><kod>LJ601/05</kod><nazev>Latina pro nelatináře I</nazev><predmetid>1758911</predmetid><fakulta_url>phil</fakulta_url><obdobi_url>podzim2026</obdobi_url></akce>
+	<poznamka id="9" />
+	<ucitele><ucitel><ucitelid>195333</ucitelid><uciteljmeno>L. Valasová</uciteljmeno></ucitel><ucitel><ucitelid>195333</ucitelid><uciteljmeno>L. Valasová</uciteljmeno></ucitel><ucitel><ucitelid>195333</ucitelid><uciteljmeno>L. Valasová</uciteljmeno></ucitel><ucitel><ucitelid>195333</ucitelid><uciteljmeno>L. Valasová</uciteljmeno></ucitel><ucitel><ucitelid>195333</ucitelid><uciteljmeno>L. Valasová</uciteljmeno></ucitel><ucitel><ucitelid>195333</ucitelid><uciteljmeno>L. Valasová</uciteljmeno></ucitel><ucitel><ucitelid>195333</ucitelid><uciteljmeno>L. Valasová</uciteljmeno></ucitel><ucitel><ucitelid>195333</ucitelid><uciteljmeno>L. Valasová</uciteljmeno></ucitel><ucitel><ucitelid>195333</ucitelid><uciteljmeno>L. Valasová</uciteljmeno></ucitel><ucitel><ucitelid>195333</ucitelid><uciteljmeno>L. Valasová</uciteljmeno></ucitel><ucitel><ucitelid>195333</ucitelid><uciteljmeno>L. Valasová</uciteljmeno></ucitel><ucitel><ucitelid>195333</ucitelid><uciteljmeno>L. Valasová</uciteljmeno></ucitel></ucitele>
+	</slot>
+	<break pdiff="2" diff="4" odcas="17:40" docas="18:00"/>
+	<break pdiff="8" diff="12" odcas="18:00" docas="19:00"/>
+	<break pdiff="8" diff="12" odcas="19:00" docas="20:00"/>
+</radek>
+</den>
+<den id="Čt" rows="2">
+<radek num="1">
+
+	<slot pdiff="13" diff="20" odcas="08:00" docas="09:40"><mistnosti><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost></mistnosti><akce><kod>LJ601/06</kod><nazev>Latina pro nelatináře I</nazev><predmetid>1758911</predmetid><fakulta_url>phil</fakulta_url><obdobi_url>podzim2026</obdobi_url></akce>
+	<poznamka id="10" />
+	<ucitele><ucitel><ucitelid>42742</ucitelid><uciteljmeno>P. Poláková</uciteljmeno></ucitel><ucitel><ucitelid>42742</ucitelid><uciteljmeno>P. Poláková</uciteljmeno></ucitel><ucitel><ucitelid>42742</ucitelid><uciteljmeno>P. Poláková</uciteljmeno></ucitel><ucitel><ucitelid>42742</ucitelid><uciteljmeno>P. Poláková</uciteljmeno></ucitel><ucitel><ucitelid>42742</ucitelid><uciteljmeno>P. Poláková</uciteljmeno></ucitel><ucitel><ucitelid>42742</ucitelid><uciteljmeno>P. Poláková</uciteljmeno></ucitel><ucitel><ucitelid>42742</ucitelid><uciteljmeno>P. Poláková</uciteljmeno></ucitel><ucitel><ucitelid>42742</ucitelid><uciteljmeno>P. Poláková</uciteljmeno></ucitel><ucitel><ucitelid>42742</ucitelid><uciteljmeno>P. Poláková</uciteljmeno></ucitel><ucitel><ucitelid>42742</ucitelid><uciteljmeno>P. Poláková</uciteljmeno></ucitel><ucitel><ucitelid>42742</ucitelid><uciteljmeno>P. Poláková</uciteljmeno></ucitel><ucitel><ucitelid>42742</ucitelid><uciteljmeno>P. Poláková</uciteljmeno></ucitel><ucitel><ucitelid>42742</ucitelid><uciteljmeno>P. Poláková</uciteljmeno></ucitel></ucitele>
+	</slot>
+	<break pdiff="2" diff="4" odcas="9:40" docas="10:00"/>
+
+	<slot pdiff="13" diff="20" odcas="10:00" docas="11:40"><mistnosti><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost><mistnost><mistnostozn>A21</mistnostozn>
+				<mistnostid>13039</mistnostid></mistnost></mistnosti><akce><kod>LJ601/03</kod><nazev>Latina pro nelatináře I</nazev><predmetid>1758911</predmetid><fakulta_url>phil</fakulta_url><obdobi_url>podzim2026</obdobi_url></akce>
+	<poznamka id="12" />
+	<ucitele><ucitel><ucitelid>93870</ucitelid><uciteljmeno>K. Mikula</uciteljmeno></ucitel><ucitel><ucitelid>93870</ucitelid><uciteljmeno>K. Mikula</uciteljmeno></ucitel><ucitel><ucitelid>93870</ucitelid><uciteljmeno>K. Mikula</uciteljmeno></ucitel><ucitel><ucitelid>93870</ucitelid><uciteljmeno>K. Mikula</uciteljmeno></ucitel><ucitel><ucitelid>93870</ucitelid><uciteljmeno>K. Mikula</uciteljmeno></ucitel><ucitel><ucitelid>93870</ucitelid><uciteljmeno>K. Mikula</uciteljmeno></ucitel><ucitel><ucitelid>93870</ucitelid><uciteljmeno>K. Mikula</uciteljmeno></ucitel><ucitel><ucitelid>93870</ucitelid><uciteljmeno>K. Mikula</uciteljmeno></ucitel><ucitel><ucitelid>93870</ucitelid><uciteljmeno>K. Mikula</uciteljmeno></ucitel><ucitel><ucitelid>93870</ucitelid><uciteljmeno>K. Mikula</uciteljmeno></ucitel><ucitel><ucitelid>93870</ucitelid><uciteljmeno>K. Mikula</uciteljmeno></ucitel><ucitel><ucitelid>93870</ucitelid><uciteljmeno>K. Mikula</uciteljmeno></ucitel><ucitel><ucitelid>93870</ucitelid><uciteljmeno>K. Mikula</uciteljmeno></ucitel></ucitele>
+	</slot>
+	<break pdiff="2" diff="4" odcas="11:40" docas="12:00"/>
+	<break pdiff="8" diff="12" odcas="12:00" docas="13:00"/>
+	<break pdiff="8" diff="12" odcas="13:00" docas="14:00"/>
+	<break pdiff="8" diff="12" odcas="14:00" docas="15:00"/>
+	<break pdiff="8" diff="12" odcas="15:00" docas="16:00"/>
+
+	<slot pdiff="16" diff="24" odcas="16:00" docas="17:50"><mistnosti><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost></mistnosti><akce><kod>MA012/01</kod><nazev>Statistics II</nazev><predmetid>1726840</predmetid><fakulta_url>fi</fakulta_url><obdobi_url>podzim2026</obdobi_url></akce>
+	<poznamka id="13" />
+	<ucitele><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel></ucitele>
+	</slot>
+
+	<slot pdiff="16" diff="24" odcas="18:00" docas="19:50"><mistnosti><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost><mistnost><mistnostozn>A320</mistnostozn>
+				<mistnostid>12972</mistnostid></mistnost></mistnosti><akce><kod>MA012/02</kod><nazev>Statistics II</nazev><predmetid>1726840</predmetid><fakulta_url>fi</fakulta_url><obdobi_url>podzim2026</obdobi_url></akce>
+	<poznamka id="14" />
+	<ucitele><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel><ucitel><ucitelid>42536</ucitelid><uciteljmeno>O. Pokora</uciteljmeno></ucitel></ucitele>
+	</slot>
+</radek>
+<radek num="2">
+
+	<slot pdiff="16" diff="24" odcas="08:00" docas="09:50"><mistnosti><mistnost><mistnostozn>KOM 200</mistnostozn>
+				<mistnostid>9301</mistnostid></mistnost><mistnost><mistnostozn>KOM 200</mistnostozn>
+				<mistnostid>9301</mistnostid></mistnost><mistnost><mistnostozn>KOM 200</mistnostozn>
+				<mistnostid>9301</mistnostid></mistnost><mistnost><mistnostozn>KOM 200</mistnostozn>
+				<mistnostid>9301</mistnostid></mistnost><mistnost><mistnostozn>KOM 200</mistnostozn>
+				<mistnostid>9301</mistnostid></mistnost><mistnost><mistnostozn>KOM 200</mistnostozn>
+				<mistnostid>9301</mistnostid></mistnost><mistnost><mistnostozn>KOM 200</mistnostozn>
+				<mistnostid>9301</mistnostid></mistnost><mistnost><mistnostozn>KOM 200</mistnostozn>
+				<mistnostid>9301</mistnostid></mistnost><mistnost><mistnostozn>KOM 200</mistnostozn>
+				<mistnostid>9301</mistnostid></mistnost><mistnost><mistnostozn>KOM 200</mistnostozn>
+				<mistnostid>9301</mistnostid></mistnost><mistnost><mistnostozn>KOM 200</mistnostozn>
+				<mistnostid>9301</mistnostid></mistnost><mistnost><mistnostozn>KOM 200</mistnostozn>
+				<mistnostid>9301</mistnostid></mistnost><mistnost><mistnostozn>KOM 200</mistnostozn>
+				<mistnostid>9301</mistnostid></mistnost><mistnost><mistnostozn>KOM 200</mistnostozn>
+				<mistnostid>9301</mistnostid></mistnost></mistnosti><akce><kod>PV021</kod><nazev>Neural Networks</nazev><predmetid>1726917</predmetid><fakulta_url>fi</fakulta_url><obdobi_url>podzim2026</obdobi_url></akce>
+	<poznamka id="11" />
+	<ucitele><ucitel><ucitelid>4074</ucitelid><uciteljmeno>T. Brázdil</uciteljmeno></ucitel><ucitel><ucitelid>4074</ucitelid><uciteljmeno>T. Brázdil</uciteljmeno></ucitel><ucitel><ucitelid>4074</ucitelid><uciteljmeno>T. Brázdil</uciteljmeno></ucitel><ucitel><ucitelid>4074</ucitelid><uciteljmeno>T. Brázdil</uciteljmeno></ucitel><ucitel><ucitelid>4074</ucitelid><uciteljmeno>T. Brázdil</uciteljmeno></ucitel><ucitel><ucitelid>4074</ucitelid><uciteljmeno>T. Brázdil</uciteljmeno></ucitel><ucitel><ucitelid>4074</ucitelid><uciteljmeno>T. Brázdil</uciteljmeno></ucitel><ucitel><ucitelid>4074</ucitelid><uciteljmeno>T. Brázdil</uciteljmeno></ucitel><ucitel><ucitelid>4074</ucitelid><uciteljmeno>T. Brázdil</uciteljmeno></ucitel><ucitel><ucitelid>4074</ucitelid><uciteljmeno>T. Brázdil</uciteljmeno></ucitel><ucitel><ucitelid>4074</ucitelid><uciteljmeno>T. Brázdil</uciteljmeno></ucitel><ucitel><ucitelid>4074</ucitelid><uciteljmeno>T. Brázdil</uciteljmeno></ucitel><ucitel><ucitelid>4074</ucitelid><uciteljmeno>T. Brázdil</uciteljmeno></ucitel><ucitel><ucitelid>4074</ucitelid><uciteljmeno>T. Brázdil</uciteljmeno></ucitel></ucitele>
+	</slot>
+	<break pdiff="8" diff="12" odcas="10:00" docas="11:00"/>
+	<break pdiff="8" diff="12" odcas="11:00" docas="12:00"/>
+	<break pdiff="8" diff="12" odcas="12:00" docas="13:00"/>
+	<break pdiff="8" diff="12" odcas="13:00" docas="14:00"/>
+	<break pdiff="8" diff="12" odcas="14:00" docas="15:00"/>
+	<break pdiff="8" diff="12" odcas="15:00" docas="16:00"/>
+	<break pdiff="8" diff="12" odcas="16:00" docas="17:00"/>
+	<break pdiff="8" diff="12" odcas="17:00" docas="18:00"/>
+	<break pdiff="8" diff="12" odcas="18:00" docas="19:00"/>
+	<break pdiff="8" diff="12" odcas="19:00" docas="20:00"/>
+</radek>
+</den>
+<den id="Pá" rows="2">
+<radek num="1">
+	<break pdiff="8" diff="12" odcas="8:00" docas="9:00"/>
+	<break pdiff="8" diff="12" odcas="9:00" docas="10:00"/>
+
+	<slot pdiff="16" diff="24" odcas="10:00" docas="11:50"><mistnosti><mistnost><mistnostozn>B204</mistnostozn>
+				<mistnostid>773</mistnostid></mistnost><mistnost><mistnostozn>B204</mistnostozn>
+				<mistnostid>773</mistnostid></mistnost><mistnost><mistnostozn>B204</mistnostozn>
+				<mistnostid>773</mistnostid></mistnost><mistnost><mistnostozn>B204</mistnostozn>
+				<mistnostid>773</mistnostid></mistnost><mistnost><mistnostozn>B204</mistnostozn>
+				<mistnostid>773</mistnostid></mistnost><mistnost><mistnostozn>B204</mistnostozn>
+				<mistnostid>773</mistnostid></mistnost><mistnost><mistnostozn>B204</mistnostozn>
+				<mistnostid>773</mistnostid></mistnost></mistnosti><akce><kod>MA010/01</kod><nazev>Graph Theory</nazev><predmetid>1726839</predmetid><fakulta_url>fi</fakulta_url><obdobi_url>podzim2026</obdobi_url></akce>
+	<poznamka id="15" />
+	<ucitele><ucitel><ucitelid>484988</ucitelid><uciteljmeno>J. Jedelský</uciteljmeno></ucitel><ucitel><ucitelid>484988</ucitelid><uciteljmeno>J. Jedelský</uciteljmeno></ucitel><ucitel><ucitelid>484988</ucitelid><uciteljmeno>J. Jedelský</uciteljmeno></ucitel><ucitel><ucitelid>484988</ucitelid><uciteljmeno>J. Jedelský</uciteljmeno></ucitel><ucitel><ucitelid>484988</ucitelid><uciteljmeno>J. Jedelský</uciteljmeno></ucitel><ucitel><ucitelid>484988</ucitelid><uciteljmeno>J. Jedelský</uciteljmeno></ucitel><ucitel><ucitelid>484988</ucitelid><uciteljmeno>J. Jedelský</uciteljmeno></ucitel></ucitele>
+	</slot>
+	<break pdiff="8" diff="12" odcas="12:00" docas="13:00"/>
+	<break pdiff="8" diff="12" odcas="13:00" docas="14:00"/>
+	<break pdiff="8" diff="12" odcas="14:00" docas="15:00"/>
+	<break pdiff="8" diff="12" odcas="15:00" docas="16:00"/>
+	<break pdiff="8" diff="12" odcas="16:00" docas="17:00"/>
+	<break pdiff="8" diff="12" odcas="17:00" docas="18:00"/>
+	<break pdiff="8" diff="12" odcas="18:00" docas="19:00"/>
+	<break pdiff="8" diff="12" odcas="19:00" docas="20:00"/>
+</radek>
+<radek num="2">
+	<break pdiff="8" diff="12" odcas="8:00" docas="9:00"/>
+	<break pdiff="8" diff="12" odcas="9:00" docas="10:00"/>
+
+	<slot pdiff="16" diff="24" odcas="10:00" docas="11:50"><mistnosti><mistnost><mistnostozn>B204</mistnostozn>
+				<mistnostid>773</mistnostid></mistnost><mistnost><mistnostozn>B204</mistnostozn>
+				<mistnostid>773</mistnostid></mistnost><mistnost><mistnostozn>B204</mistnostozn>
+				<mistnostid>773</mistnostid></mistnost><mistnost><mistnostozn>B204</mistnostozn>
+				<mistnostid>773</mistnostid></mistnost><mistnost><mistnostozn>B204</mistnostozn>
+				<mistnostid>773</mistnostid></mistnost><mistnost><mistnostozn>B204</mistnostozn>
+				<mistnostid>773</mistnostid></mistnost><mistnost><mistnostozn>B204</mistnostozn>
+				<mistnostid>773</mistnostid></mistnost></mistnosti><akce><kod>MA010/02</kod><nazev>Graph Theory</nazev><predmetid>1726839</predmetid><fakulta_url>fi</fakulta_url><obdobi_url>podzim2026</obdobi_url></akce>
+	<poznamka id="16" />
+	<ucitele><ucitel><ucitelid>484988</ucitelid><uciteljmeno>J. Jedelský</uciteljmeno></ucitel><ucitel><ucitelid>484988</ucitelid><uciteljmeno>J. Jedelský</uciteljmeno></ucitel><ucitel><ucitelid>484988</ucitelid><uciteljmeno>J. Jedelský</uciteljmeno></ucitel><ucitel><ucitelid>484988</ucitelid><uciteljmeno>J. Jedelský</uciteljmeno></ucitel><ucitel><ucitelid>484988</ucitelid><uciteljmeno>J. Jedelský</uciteljmeno></ucitel><ucitel><ucitelid>484988</ucitelid><uciteljmeno>J. Jedelský</uciteljmeno></ucitel><ucitel><ucitelid>484988</ucitelid><uciteljmeno>J. Jedelský</uciteljmeno></ucitel></ucitele>
+	</slot>
+	<break pdiff="8" diff="12" odcas="12:00" docas="13:00"/>
+	<break pdiff="8" diff="12" odcas="13:00" docas="14:00"/>
+	<break pdiff="8" diff="12" odcas="14:00" docas="15:00"/>
+	<break pdiff="8" diff="12" odcas="15:00" docas="16:00"/>
+	<break pdiff="8" diff="12" odcas="16:00" docas="17:00"/>
+	<break pdiff="8" diff="12" odcas="17:00" docas="18:00"/>
+	<break pdiff="8" diff="12" odcas="18:00" docas="19:00"/>
+	<break pdiff="8" diff="12" odcas="19:00" docas="20:00"/>
+</radek>
+</den>
+</tabulka>
+<poznamky>
+	<poznamka id="1">Po 8:00–9:40, kromě 16. 11. (&lt;a href=&quot;/auth/osoba/262845&quot;&gt;P. Ševčík&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/262845&quot;&gt;P. Ševčík&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/262845&quot;&gt;P. Ševčík&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/262845&quot;&gt;P. Ševčík&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/262845&quot;&gt;P. Ševčík&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/262845&quot;&gt;P. Ševčík&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/262845&quot;&gt;P. Ševčík&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/262845&quot;&gt;P. Ševčík&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/262845&quot;&gt;P. Ševčík&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/262845&quot;&gt;P. Ševčík&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/262845&quot;&gt;P. Ševčík&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/262845&quot;&gt;P. Ševčík&lt;/a&gt;; 14. 9., 21. 9., 5. 10., 12. 10., 19. 10., 26. 10., 2. 11., 9. 11., 23. 11., 30. 11., 7. 12. a 14. 12.)</poznamka>
+	<poznamka id="2">Po 10:00–11:40, kromě 16. 11. (&lt;a href=&quot;/auth/osoba/262845&quot;&gt;P. Ševčík&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/262845&quot;&gt;P. Ševčík&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/262845&quot;&gt;P. Ševčík&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/262845&quot;&gt;P. Ševčík&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/262845&quot;&gt;P. Ševčík&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/262845&quot;&gt;P. Ševčík&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/262845&quot;&gt;P. Ševčík&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/262845&quot;&gt;P. Ševčík&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/262845&quot;&gt;P. Ševčík&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/262845&quot;&gt;P. Ševčík&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/262845&quot;&gt;P. Ševčík&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/262845&quot;&gt;P. Ševčík&lt;/a&gt;; 14. 9., 21. 9., 5. 10., 12. 10., 19. 10., 26. 10., 2. 11., 9. 11., 23. 11., 30. 11., 7. 12. a 14. 12.)</poznamka>
+	<poznamka id="3">Po 16:00–17:40, kromě 16. 11. (&lt;a href=&quot;/auth/osoba/195333&quot;&gt;L. Valasová&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/195333&quot;&gt;L. Valasová&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/195333&quot;&gt;L. Valasová&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/195333&quot;&gt;L. Valasová&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/195333&quot;&gt;L. Valasová&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/195333&quot;&gt;L. Valasová&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/195333&quot;&gt;L. Valasová&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/195333&quot;&gt;L. Valasová&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/195333&quot;&gt;L. Valasová&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/195333&quot;&gt;L. Valasová&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/195333&quot;&gt;L. Valasová&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/195333&quot;&gt;L. Valasová&lt;/a&gt;; 14. 9., 21. 9., 5. 10., 12. 10., 19. 10., 26. 10., 2. 11., 9. 11., 23. 11., 30. 11., 7. 12. a 14. 12.)</poznamka>
+	<poznamka id="4">Út 8:00–9:50, od 15. 9. do 15. 12. (15. 9., 22. 9., 29. 9., 6. 10., 13. 10., 20. 10., 27. 10., 3. 11., 10. 11., 24. 11., 1. 12., 8. 12. a 15. 12.)</poznamka>
+	<poznamka id="5">Út 10:00–11:50, od 15. 9. do 15. 12. (15. 9., 22. 9., 29. 9., 6. 10., 13. 10., 20. 10., 27. 10., 3. 11., 10. 11., 24. 11., 1. 12., 8. 12. a 15. 12.)</poznamka>
+	<poznamka id="6">Út 12:00–13:50, od 15. 9. do 15. 12. (15. 9., 22. 9., 29. 9., 6. 10., 13. 10., 20. 10., 27. 10., 3. 11., 10. 11., 24. 11., 1. 12., 8. 12. a 15. 12.)</poznamka>
+	<poznamka id="7">St 8:00–9:50, od 16. 9. do 16. 12. (16. 9., 23. 9., 30. 9., 7. 10., 14. 10., 21. 10., 4. 11., 11. 11., 18. 11., 25. 11., 2. 12., 9. 12. a 16. 12.)</poznamka>
+	<poznamka id="8">St 12:00–13:50, od 16. 9. do 16. 12. (16. 9., 23. 9., 30. 9., 7. 10., 14. 10., 21. 10., 4. 11., 11. 11., 18. 11., 25. 11., 2. 12., 9. 12. a 16. 12.)</poznamka>
+	<poznamka id="9">St 16:00–17:40, kromě 18. 11. (&lt;a href=&quot;/auth/osoba/195333&quot;&gt;L. Valasová&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/195333&quot;&gt;L. Valasová&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/195333&quot;&gt;L. Valasová&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/195333&quot;&gt;L. Valasová&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/195333&quot;&gt;L. Valasová&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/195333&quot;&gt;L. Valasová&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/195333&quot;&gt;L. Valasová&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/195333&quot;&gt;L. Valasová&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/195333&quot;&gt;L. Valasová&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/195333&quot;&gt;L. Valasová&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/195333&quot;&gt;L. Valasová&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/195333&quot;&gt;L. Valasová&lt;/a&gt;; 16. 9., 23. 9., 30. 9., 7. 10., 14. 10., 21. 10., 4. 11., 11. 11., 25. 11., 2. 12., 9. 12. a 16. 12.)</poznamka>
+	<poznamka id="10">Čt 8:00–9:40, kromě 19. 11. (&lt;a href=&quot;/auth/osoba/42742&quot;&gt;P. Poláková&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/42742&quot;&gt;P. Poláková&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/42742&quot;&gt;P. Poláková&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/42742&quot;&gt;P. Poláková&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/42742&quot;&gt;P. Poláková&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/42742&quot;&gt;P. Poláková&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/42742&quot;&gt;P. Poláková&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/42742&quot;&gt;P. Poláková&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/42742&quot;&gt;P. Poláková&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/42742&quot;&gt;P. Poláková&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/42742&quot;&gt;P. Poláková&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/42742&quot;&gt;P. Poláková&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/42742&quot;&gt;P. Poláková&lt;/a&gt;; 17. 9., 24. 9., 1. 10., 8. 10., 15. 10., 22. 10., 29. 10., 5. 11., 12. 11., 26. 11., 3. 12., 10. 12. a 17. 12.)</poznamka>
+	<poznamka id="11">Čt 8:00–9:50, od 17. 9. do 17. 12. (17. 9., 24. 9., 1. 10., 8. 10., 15. 10., 22. 10., 29. 10., 5. 11., 12. 11., 19. 11., 26. 11., 3. 12., 10. 12. a 17. 12.)</poznamka>
+	<poznamka id="12">Čt 10:00–11:40, kromě 19. 11. (&lt;a href=&quot;/auth/osoba/93870&quot;&gt;K. Mikula&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/93870&quot;&gt;K. Mikula&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/93870&quot;&gt;K. Mikula&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/93870&quot;&gt;K. Mikula&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/93870&quot;&gt;K. Mikula&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/93870&quot;&gt;K. Mikula&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/93870&quot;&gt;K. Mikula&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/93870&quot;&gt;K. Mikula&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/93870&quot;&gt;K. Mikula&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/93870&quot;&gt;K. Mikula&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/93870&quot;&gt;K. Mikula&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/93870&quot;&gt;K. Mikula&lt;/a&gt;, &lt;a href=&quot;/auth/osoba/93870&quot;&gt;K. Mikula&lt;/a&gt;; 17. 9., 24. 9., 1. 10., 8. 10., 15. 10., 22. 10., 29. 10., 5. 11., 12. 11., 26. 11., 3. 12., 10. 12. a 17. 12.)</poznamka>
+	<poznamka id="13">Čt 16:00–17:50, od 17. 9. do 17. 12. (17. 9., 24. 9., 1. 10., 8. 10., 15. 10., 22. 10., 29. 10., 5. 11., 12. 11., 19. 11., 26. 11., 3. 12., 10. 12. a 17. 12.)</poznamka>
+	<poznamka id="14">Čt 18:00–19:50, od 17. 9. do 17. 12. (17. 9., 24. 9., 1. 10., 8. 10., 15. 10., 22. 10., 29. 10., 5. 11., 12. 11., 19. 11., 26. 11., 3. 12., 10. 12. a 17. 12.)</poznamka>
+	<poznamka id="15">každý sudý pátek 10:00–11:50, od 18. 9. do 11. 12. (18. 9., 2. 10., 16. 10., 30. 10., 13. 11., 27. 11. a 11. 12.)</poznamka>
+	<poznamka id="16">každý lichý pátek 10:00–11:50, od 25. 9. do 18. 12. (25. 9., 9. 10., 23. 10., 6. 11., 20. 11., 4. 12. a 18. 12.)</poznamka>
+</poznamky>
+<nezname>
+	<akce><kod>SOBHA</kod><nazev>Obhajoba závěrečné práce</nazev><predmetid>1727015</predmetid><fakulta_url>fi</fakulta_url><obdobi_url>podzim2026</obdobi_url></akce>
+	<akce><kod>SZB</kod><nazev>Státní zkouška (bakalářský studijní program)</nazev><predmetid>1727018</predmetid><fakulta_url>fi</fakulta_url><obdobi_url>podzim2026</obdobi_url></akce>
+</nezname>
+</rozvrh>
