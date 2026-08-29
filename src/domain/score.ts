@@ -109,7 +109,7 @@ function compactnessTerm(events: CourseEvent[], prefs: Prefs): ScoreTerm {
  * did ("cost per minute, at the worst-case gap length"); every other gap length is discounted
  * relative to that peak rather than counted minute-for-minute.
  */
-const GAP_PEAK_MINUTES = 120;
+export const GAP_PEAK_MINUTES = 120;
 const GAP_SHAPE_THETA = GAP_PEAK_MINUTES / 2;
 const GAP_PEAK_RAW = (GAP_PEAK_MINUTES / GAP_SHAPE_THETA) ** 2 * Math.exp(-GAP_PEAK_MINUTES / GAP_SHAPE_THETA);
 
