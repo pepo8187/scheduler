@@ -102,6 +102,13 @@
   color: var(--text-muted);
 }
 
+.panel__title-hint {
+  font-weight: 450;
+  text-transform: none;
+  letter-spacing: normal;
+  opacity: 0.7;
+}
+
 .placeholder {
   margin: 0;
   color: var(--text-faint);

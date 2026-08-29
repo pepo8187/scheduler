@@ -1,8 +1,12 @@
 import { parseTimeToMinutes } from './format';
 import type { CourseEvent, Day, EventKind, Slot, Subject, Teacher, Timetable, UnscheduledCourse } from './types';
 
-/** `MA012` is a lecture; `MA012/03` is seminar group `03` of `MA012`. */
-const SEMINAR_CODE = /^(.+?)\/([0-9]+[A-Za-z]?)$/;
+/**
+ * `MA012` is a lecture; `MA012/03` is seminar group `03` of `MA012`. The group label after
+ * the slash isn't always numeric — `IB000/AA` (advanced), `PB173/qt`, `PB173/git` are all
+ * real MUNI IS group labels — so any `/` marks a seminar group, not just a digit-led one.
+ */
+const SEMINAR_CODE = /^(.+?)\/(.+)$/;
 
 export function parseTimetable(xml: string): Timetable {
   return parseTimetableDocument(new DOMParser().parseFromString(xml, 'application/xml'));

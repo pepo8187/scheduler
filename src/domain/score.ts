@@ -60,8 +60,7 @@ function daySlots(events: CourseEvent[]): Map<Day, Slot[]> {
   return byDay;
 }
 
-function compactnessTerm(events: CourseEvent[], prefs: Prefs): ScoreTerm {
-  const byDay = daySlots(events);
+function compactnessTerm(byDay: Map<Day, Slot[]>, prefs: Prefs): ScoreTerm {
   const daysUsed = byDay.size;
 
   if (prefs.compactness === 0 || daysUsed === 0) {
@@ -134,9 +133,7 @@ function gapsForDay(slots: Slot[]): { idleMinutes: number; badness: number } {
   return { idleMinutes, badness };
 }
 
-function gapsTerm(events: CourseEvent[], prefs: Prefs): ScoreTerm {
-  const byDay = daySlots(events);
-
+function gapsTerm(byDay: Map<Day, Slot[]>, prefs: Prefs): ScoreTerm {
   let idleMinutes = 0;
   let totalBadness = 0;
   for (const slots of byDay.values()) {
@@ -161,20 +158,29 @@ function dayWindowTerm(events: CourseEvent[], prefs: Prefs): ScoreTerm {
   return { key: 'dayWindow', label: 'Outside day window', cost, detail: `${minutesOutside} minute(s) outside` };
 }
 
-function maxPerDayTerm(events: CourseEvent[], prefs: Prefs): ScoreTerm {
+function maxPerDayTerm(byDay: Map<Day, Slot[]>, prefs: Prefs): ScoreTerm {
   if (prefs.maxClassesPerDay == null) {
     return { key: 'maxPerDay', label: 'Max classes/day', cost: 0, detail: 'off' };
   }
-  const byDay = daySlots(events);
   let excess = 0;
   for (const slots of byDay.values()) excess += Math.max(0, slots.length - prefs.maxClassesPerDay);
   const cost = excess * WEIGHTS.maxPerDayPerExcessClass;
   return { key: 'maxPerDay', label: 'Max classes/day', cost, detail: `${excess} class(es) over cap` };
 }
 
-export function computeScore(timetable: Timetable, selection: Selection, prefs: Prefs, assignment: Assignment): Score {
-  const { events, overlaps } = resolveAssignment(timetable, selection, assignment);
+/**
+ * Scores an already-resolved assignment. Split out from `computeScore` so the solver's hot
+ * loop (which resolves an assignment to check overlaps/forward-checking anyway) never pays
+ * for `resolveAssignment` twice per candidate.
+ */
+export function scoreResolved(
+  prefs: Prefs,
+  droppedLectures: Assignment['droppedLectures'],
+  events: CourseEvent[],
+  overlaps: Overlap[],
+): Score {
   const seminarOverlaps = overlaps.filter((o) => o.kind === 'seminar');
+  const byDay = daySlots(events);
 
   const terms: ScoreTerm[] = [
     {
@@ -186,14 +192,19 @@ export function computeScore(timetable: Timetable, selection: Selection, prefs: 
     {
       key: 'droppedLecture',
       label: 'Dropped lectures',
-      cost: assignment.droppedLectures.size * WEIGHTS.droppedLecturePerEvent,
-      detail: assignment.droppedLectures.size === 0 ? 'none' : `${assignment.droppedLectures.size} dropped`,
+      cost: droppedLectures.size * WEIGHTS.droppedLecturePerEvent,
+      detail: droppedLectures.size === 0 ? 'none' : `${droppedLectures.size} dropped`,
     },
-    compactnessTerm(events, prefs),
-    gapsTerm(events, prefs),
+    compactnessTerm(byDay, prefs),
+    gapsTerm(byDay, prefs),
     dayWindowTerm(events, prefs),
-    maxPerDayTerm(events, prefs),
+    maxPerDayTerm(byDay, prefs),
   ];
 
   return { total: terms.reduce((sum, t) => sum + t.cost, 0), terms };
+}
+
+export function computeScore(timetable: Timetable, selection: Selection, prefs: Prefs, assignment: Assignment): Score {
+  const { events, overlaps } = resolveAssignment(timetable, selection, assignment);
+  return scoreResolved(prefs, assignment.droppedLectures, events, overlaps);
 }

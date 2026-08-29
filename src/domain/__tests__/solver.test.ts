@@ -151,6 +151,38 @@ describe('solve — lunch block', () => {
   });
 });
 
+describe('solve — group collapsing', () => {
+  it('picks a collision-free representative among many groups sharing the exact same slot', () => {
+    const lecture = event('AA', 'AA', 'lecture', [slot('Po', 480, 570)]);
+    // 30 "BB" groups all meeting Tuesday 8:00-9:50 (e.g. the same lab taught by many TAs) —
+    // interchangeable for scoring, so the solver should treat them as effectively one value.
+    const identicalGroups = Array.from({ length: 30 }, (_, i) =>
+      event(`BB/${String(i).padStart(2, '0')}`, 'BB', 'seminar', [slot('Út', 480, 570)], String(i)),
+    );
+    const timetable = timetableOf([subject('AA', [lecture], []), subject('BB', [], identicalGroups)]);
+    const selection = buildFullSelection(timetable);
+
+    const result = solve(timetable, selection, DEFAULT_PREFS);
+
+    expect(result.provenOptimal).toBe(true);
+    expect(result.solutions[0]?.score.total).toBe(0);
+    expect(identicalGroups.some((g) => g.id === result.solutions[0]?.assignment.seminarChoice.BB)).toBe(true);
+  });
+
+  it('never prefers a colliding group over a same-variable clean one, even when the clean one is not first', () => {
+    const lecture = event('AA', 'AA', 'lecture', [slot('Po', 480, 570)]);
+    const colliding = event('BB/01', 'BB', 'seminar', [slot('Po', 480, 570)], '01'); // overlaps AA
+    const clean = event('BB/02', 'BB', 'seminar', [slot('St', 480, 570)], '02');
+    const timetable = timetableOf([subject('AA', [lecture], []), subject('BB', [], [colliding, clean])]);
+    const selection = buildFullSelection(timetable);
+
+    const result = solve(timetable, selection, DEFAULT_PREFS);
+
+    expect(result.solutions[0]?.assignment.seminarChoice.BB).toBe('BB/02');
+    expect(result.solutions[0]?.score.total).toBe(0);
+  });
+});
+
 describe('solve — node budget fallback', () => {
   it('labels the result not-proven-optimal once the budget is exceeded, and still returns solutions', () => {
     const lecture = event('AA', 'AA', 'lecture', [slot('Po', 480, 570)]);
@@ -216,5 +248,36 @@ describe('solve — brute-force cross-check on the real sample', () => {
 
     expect(result.solutions[0]?.score.total).toBe(bruteBest);
     expect(result.solutions[0]?.assignment.seminarChoice.PV275).toBeNull(); // no Tuesday-free group survives
+  });
+});
+
+describe('solve — performance regression guard', () => {
+  it('stays proven-optimal and fast on a heavy semester (5 subjects x ~15-45 wide-spread groups)', () => {
+    // Mirrors the shape that used to blow the node budget: several subjects each with dozens
+    // of seminar groups scattered across the week, no exploitable structure to shrink the
+    // search other than branch-and-bound. This used to take tens of seconds; should now be
+    // well under a second thanks to branch-and-bound + hoisted forward checking.
+    const days: Slot['day'][] = ['Po', 'Út', 'St', 'Čt', 'Pá'];
+    const subjects: Subject[] = [];
+    const groupCounts = [15, 18, 23, 28, 35];
+    for (let i = 0; i < groupCounts.length; i++) {
+      const code = `S${i}`;
+      const lecture = event(code, code, 'lecture', [slot(days[i % 5]!, 480 + (i % 4) * 100, 480 + (i % 4) * 100 + 90)]);
+      const seminars: CourseEvent[] = [];
+      for (let g = 0; g < groupCounts[i]!; g++) {
+        const start = 480 + (g % 8) * 60;
+        seminars.push(event(`${code}/${g}`, code, 'seminar', [slot(days[(i + g) % 5]!, start, start + 50)], String(g)));
+      }
+      subjects.push(subject(code, [lecture], seminars));
+    }
+    const timetable = timetableOf(subjects);
+    const selection = buildFullSelection(timetable);
+
+    const start = performance.now();
+    const result = solve(timetable, selection, DEFAULT_PREFS);
+    const elapsedMs = performance.now() - start;
+
+    expect(result.provenOptimal).toBe(true);
+    expect(elapsedMs).toBeLessThan(5_000); // generous margin; typically well under 1s
   });
 });
