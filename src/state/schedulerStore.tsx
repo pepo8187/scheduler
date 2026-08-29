@@ -62,6 +62,7 @@ type Action =
   | { type: 'TOGGLE_SEMINAR'; subjectCode: string; seminarId: string }
   | { type: 'SELECT_TEACHER_GROUPS'; subjectCode: string; teacherId: string }
   | { type: 'ENABLE_ALL_SEMINARS'; subjectCode: string }
+  | { type: 'DISABLE_ALL_SEMINARS'; subjectCode: string }
   | { type: 'CLEAR' };
 
 function reducer(state: State, action: Action): State {
@@ -164,6 +165,14 @@ function reducer(state: State, action: Action): State {
       return { ...state, selection: { ...state.selection, [action.subjectCode]: { ...subjectSelection, seminars } } };
     }
 
+    case 'DISABLE_ALL_SEMINARS': {
+      const timetableSubject = state.timetable?.subjects.find((s) => s.code === action.subjectCode);
+      const subjectSelection = state.selection[action.subjectCode];
+      if (!timetableSubject || !subjectSelection) return state;
+      const seminars = Object.fromEntries(timetableSubject.seminars.map((s) => [s.id, false]));
+      return { ...state, selection: { ...state.selection, [action.subjectCode]: { ...subjectSelection, seminars } } };
+    }
+
     case 'CLEAR':
       return EMPTY_STATE;
 
@@ -183,6 +192,7 @@ export interface SchedulerActions {
   toggleSeminar: (subjectCode: string, seminarId: string) => void;
   selectTeacherGroups: (subjectCode: string, teacherId: string) => void;
   enableAllSeminars: (subjectCode: string) => void;
+  disableAllSeminars: (subjectCode: string) => void;
   clear: () => void;
 }
 
@@ -231,6 +241,7 @@ export function SchedulerProvider({ children }: { children: ReactNode }) {
       selectTeacherGroups: (subjectCode, teacherId) =>
         dispatch({ type: 'SELECT_TEACHER_GROUPS', subjectCode, teacherId }),
       enableAllSeminars: (subjectCode) => dispatch({ type: 'ENABLE_ALL_SEMINARS', subjectCode }),
+      disableAllSeminars: (subjectCode) => dispatch({ type: 'DISABLE_ALL_SEMINARS', subjectCode }),
       clear: () => dispatch({ type: 'CLEAR' }),
     }),
     [],

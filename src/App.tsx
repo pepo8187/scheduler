@@ -1,11 +1,25 @@
+import { useEffect, useState } from 'react';
+import FileDrop from './components/FileDrop';
+import PreferencePanel from './components/prefs/PreferencePanel';
+import WeekGrid from './components/grid/WeekGrid';
+import AlternativesBar from './components/results/AlternativesBar';
+import DiagnosticsPanel from './components/results/DiagnosticsPanel';
+import ScoreBreakdown from './components/results/ScoreBreakdown';
+import SubjectList from './components/sidebar/SubjectList';
 import ThemeToggle from './components/ThemeToggle';
+import { useScheduler } from './state/schedulerStore';
 
-/**
- * Scaffold shell. The sidebar, preference panel and week grid land here in
- * steps 5-7 of docs/PLAN.md; this placeholder exists so the theme, layout
- * skeleton and build pipeline are verifiable from the very first commit.
- */
 export default function App() {
+  const { timetable, selection, prefs, dayOffAnalysis, lectureConflicts, solveResult } = useScheduler();
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  useEffect(() => {
+    setSelectedIndex(0); // a fresh solve invalidates any previously-selected rank
+  }, [solveResult]);
+
+  const solutions = solveResult?.solutions ?? [];
+  const solution = solutions[selectedIndex] ?? solutions[0] ?? null;
+
   return (
     <div className="app">
       <header className="app__header">
@@ -19,36 +33,46 @@ export default function App() {
       <div className="app__body">
         <aside className="app__sidebar panel">
           <h2 className="panel__title">Subjects</h2>
-          <p className="placeholder">
-            Load a timetable export to list subjects, their lectures and every seminar group.
-          </p>
+          <FileDrop />
+          <SubjectList />
         </aside>
 
         <main className="app__main">
           <section className="panel">
             <h2 className="panel__title">Preferences</h2>
-            <p className="placeholder">
-              Days off, cram vs. spread, gaps, day window and teacher filters.
-            </p>
+            {timetable ? (
+              <PreferencePanel />
+            ) : (
+              <p className="placeholder">Days off, cram vs. spread, gaps, day window and teacher filters.</p>
+            )}
           </section>
+
+          {timetable && solveResult && (
+            <section className="panel">
+              <h2 className="panel__title">Alternatives</h2>
+              <AlternativesBar
+                solutions={solutions}
+                provenOptimal={solveResult.provenOptimal}
+                selectedIndex={selectedIndex}
+                onSelect={setSelectedIndex}
+              />
+              {solution && <ScoreBreakdown score={solution.score} />}
+              <DiagnosticsPanel
+                solution={solution}
+                lectureConflicts={lectureConflicts}
+                dayOffAnalysis={dayOffAnalysis}
+                daysOff={prefs.daysOff}
+              />
+            </section>
+          )}
 
           <section className="panel panel--grow">
             <h2 className="panel__title">Week</h2>
-            <div className="legend">
-              <span className="legend__item">
-                <span className="legend__swatch legend__swatch--lecture" aria-hidden="true" />
-                Lecture &mdash; fixed
-              </span>
-              <span className="legend__item">
-                <span className="legend__swatch legend__swatch--seminar" aria-hidden="true" />
-                Seminar &mdash; chosen for you
-              </span>
-              <span className="legend__item">
-                <span className="legend__swatch legend__swatch--clash" aria-hidden="true" />
-                Overlapping lectures
-              </span>
-            </div>
-            <p className="placeholder">The week grid renders here.</p>
+            {timetable ? (
+              <WeekGrid timetable={timetable} selection={selection} solution={solution} />
+            ) : (
+              <p className="placeholder">The week grid renders here.</p>
+            )}
           </section>
         </main>
       </div>
