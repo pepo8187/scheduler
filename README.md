@@ -128,13 +128,20 @@ dropped or moved to protect lunch — but it's still surfaced as an informationa
 block's limits are visible rather than assumed away.
 
 `src/domain/solver.ts` searches one variable per enabled subject-with-seminars (which group,
-or none) via MRV-ordered DFS with forward checking, keeping the best 10 by score. Non-★
-lecture drops aren't searched — they're derived directly from which days are off, since that
-is the only thing they're ever used for. The search space for a normal semester is small
-(23,250 combinations for the bundled sample) so this is exhaustive and provably optimal; a
-node-budget guard falls back to randomised local search on pathological inputs, and that
-result is labelled "best found — not proven optimal" rather than claiming something it can't
-prove.
+or none) via MRV-ordered DFS with forward checking and branch-and-bound, keeping the best 10
+by score. Groups that meet at the exact same day/time (a lab slot taught by several TAs, say)
+are collapsed to one representative before search even starts — the score never looks at who
+teaches a group. Non-★ lecture drops aren't searched — they're derived directly from which
+days are off, since that is the only thing they're ever used for. The search space for a
+normal semester is small (23,250 combinations for the bundled sample) so this is exhaustive
+and provably optimal in milliseconds; a heavy real semester (tens of groups per subject
+across several subjects, ~10⁷ raw combinations) also finishes proven-optimal, typically in
+well under a second — collision penalties dwarf every comfort preference, so the
+branch-and-bound prunes almost anything that isn't collision-free early. A node-budget guard
+falls back to randomised local search on pathological inputs with no exploitable structure at
+all, and that result is labelled "best found — not proven optimal" rather than claiming
+something it can't prove. The solve itself runs in a Web Worker, debounced, so the UI never
+blocks on it.
 
 ### A real unavoidable collision
 
@@ -169,7 +176,8 @@ src/domain/                     pure TypeScript, no React — unit-testable head
   analysis.ts                      day-off & lunch pre-flight: blockers, drops, dead-subject trade-offs
   lunch.ts                         effective per-day lunch window + slot-overlaps-lunch check
   score.ts                         the objective and its per-term breakdown
-  solver.ts                        MRV/forward-checking DFS, top-10, node-budget fallback
+  solver.ts                        MRV/forward-checking/branch-and-bound DFS, group collapsing, top-10, node-budget fallback
+  solver.worker.ts                 runs solve() off the main thread
   presets.ts                       default prefs + the four one-click bundles
   format.ts                        minutes<->"HH:MM", day labels, slot/teacher/room descriptions
   __tests__/                       vitest: parser, overlap, analysis, lunch, score, solver (+ real-sample fixture)

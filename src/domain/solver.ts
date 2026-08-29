@@ -1,6 +1,6 @@
 import { slotDuringLunch } from './lunch';
 import { eventsOverlap } from './overlap';
-import { computeScore, resolveAssignment } from './score';
+import { resolveAssignment, scoreResolved, WEIGHTS } from './score';
 import type { Assignment, CourseEvent, Day, LunchPrefs, Prefs, Selection, Solution, Timetable } from './types';
 
 export interface SolveOptions {
@@ -19,9 +19,17 @@ export interface SolveResult {
   provenOptimal: boolean;
 }
 
+interface VariableValue {
+  /** The seminar CourseEvent this domain value picks, or null for "no seminar chosen". */
+  event: CourseEvent | null;
+  /** Collisions against the fixed (always-present) lectures of *other* subjects — constant
+   *  for the whole search, precomputed once so the DFS never recomputes it per node. */
+  fixedCollisions: number;
+}
+
 interface Variable {
   subjectCode: string;
-  domain: (string | null)[]; // seminar CourseEvent id, or null for "no seminar chosen"
+  domain: VariableValue[];
 }
 
 /**
@@ -58,8 +66,38 @@ function fixedLectures(timetable: Timetable, selection: Selection, dropped: Set<
   return events;
 }
 
-/** Upfront domain filtering: enabled groups only, minus anything touching a day off or lunch. */
-function buildVariables(timetable: Timetable, selection: Selection, daysOff: Day[], lunch: LunchPrefs): Variable[] {
+/** Same day/time signature for every slot, order-independent — groups sharing one are
+ *  interchangeable for search purposes (the score never looks at who teaches a group). */
+function slotSignature(event: CourseEvent): string {
+  return event.slots
+    .map((s) => `${s.day}:${s.start}-${s.end}`)
+    .sort()
+    .join(',');
+}
+
+/**
+ * Upfront domain construction. Folds in everything that's constant for the whole search, so
+ * none of it has to be recomputed per DFS node:
+ *  - hard filtering (day off / lunch),
+ *  - collapsing groups that meet at the exact same day/time into a single representative
+ *    (real exports routinely have many — e.g. one lab slot taught by several TAs),
+ *  - forward checking against the fixed (always-present) lectures of *other* subjects: a
+ *    value that collides with one is dropped whenever the same variable has a clean
+ *    alternative, since a clean option always strictly dominates a colliding one here
+ *    (its collision penalty alone outweighs any comfort-term difference) regardless of what
+ *    the rest of the search does. Own-subject lectures are excluded from this check, same
+ *    as `findOverlaps`: only one of a subject's groups is ever selected, so a lecture
+ *    overlapping its own subject's group is never actually penalised.
+ * Surviving values are ordered by ascending fixed-collision count so the branch-and-bound in
+ * `solve` finds a strong incumbent — and starts pruning — as early as possible.
+ */
+function buildVariables(
+  timetable: Timetable,
+  selection: Selection,
+  daysOff: Day[],
+  lunch: LunchPrefs,
+  fixed: CourseEvent[],
+): Variable[] {
   const variables: Variable[] = [];
   for (const subject of timetable.subjects) {
     const subjectSelection = selection[subject.code];
@@ -69,33 +107,35 @@ function buildVariables(timetable: Timetable, selection: Selection, daysOff: Day
     const survivors = enabledGroups.filter(
       (s) => !s.slots.some((slot) => daysOff.includes(slot.day) || slotDuringLunch(slot, lunch)),
     );
-    // Never an empty domain: no usable group means "lecture only", not failure.
-    const domain: (string | null)[] = survivors.length > 0 ? survivors.map((s) => s.id) : [null];
+
+    if (survivors.length === 0) {
+      // Never an empty domain: no usable group means "lecture only", not failure.
+      variables.push({ subjectCode: subject.code, domain: [{ event: null, fixedCollisions: 0 }] });
+      continue;
+    }
+
+    const otherFixed = fixed.filter((f) => f.subjectCode !== subject.code);
+
+    const bySignature = new Map<string, CourseEvent>();
+    for (const group of survivors) {
+      const sig = slotSignature(group);
+      const existing = bySignature.get(sig);
+      if (!existing || group.id < existing.id) bySignature.set(sig, group); // deterministic representative
+    }
+
+    const withCollisions: VariableValue[] = [...bySignature.values()].map((event) => ({
+      event,
+      fixedCollisions: otherFixed.reduce((n, f) => n + (eventsOverlap(f, event) ? 1 : 0), 0),
+    }));
+    const clean = withCollisions.filter((v) => v.fixedCollisions === 0);
+    const domain = (clean.length > 0 ? clean : withCollisions).sort(
+      (a, b) => a.fixedCollisions - b.fixedCollisions || a.event!.id.localeCompare(b.event!.id),
+    );
+
     variables.push({ subjectCode: subject.code, domain });
   }
   // MRV: most-constrained variables first, so bad branches are pruned early.
   return variables.sort((a, b) => a.domain.length - b.domain.length);
-}
-
-function findSeminar(timetable: Timetable, subjectCode: string, id: string): CourseEvent | undefined {
-  return timetable.subjects.find((s) => s.code === subjectCode)?.seminars.find((s) => s.id === id);
-}
-
-/**
- * Forward checking against the fixed (always-present) lectures only: a value that
- * collides with a fixed lecture is dropped from consideration whenever the same
- * variable has a clean alternative. This can never change the optimum — fixed
- * lectures never move, so a clean option strictly dominates a colliding one for
- * this variable regardless of what the rest of the search does — and it never
- * empties a domain (falls back to the untouched domain instead).
- */
-function forwardCheckedDomain(variable: Variable, timetable: Timetable, fixed: CourseEvent[]): (string | null)[] {
-  const clean = variable.domain.filter((value) => {
-    if (value === null) return true;
-    const seminar = findSeminar(timetable, variable.subjectCode, value);
-    return seminar ? !fixed.some((event) => eventsOverlap(event, seminar)) : true;
-  });
-  return clean.length > 0 ? clean : variable.domain;
 }
 
 function latestFinish(events: CourseEvent[]): number {
@@ -126,16 +166,27 @@ function buildSolution(
   droppedLectures: Set<string>,
   choice: Record<string, string | null>,
 ): Solution {
-  const assignment: Assignment = { seminarChoice: { ...choice }, droppedLectures };
+  const assignment: Assignment = { seminarChoice: choice, droppedLectures };
   const { events, overlaps } = resolveAssignment(timetable, selection, assignment);
-  const score = computeScore(timetable, selection, prefs, assignment);
+  const score = scoreResolved(prefs, droppedLectures, events, overlaps);
   return { assignment, events, overlaps, score };
 }
 
+/** Skips the push/sort/truncate for a candidate that provably can't make the cut. */
 function insertRanked(best: Solution[], solution: Solution, topK: number): void {
+  if (best.length >= topK && compareSolutions(solution, best[topK - 1]!) >= 0) return;
   best.push(solution);
   best.sort(compareSolutions);
   if (best.length > topK) best.length = topK;
+}
+
+function randomChoiceOf(variables: Variable[], random: () => number): Record<string, string | null> {
+  const choice: Record<string, string | null> = {};
+  for (const variable of variables) {
+    const value = variable.domain[Math.floor(random() * variable.domain.length)]!;
+    choice[variable.subjectCode] = value.event?.id ?? null;
+  }
+  return choice;
 }
 
 function randomizedFallback(
@@ -149,22 +200,15 @@ function randomizedFallback(
   random: () => number,
   iterations: number,
 ): void {
-  const randomChoice = (): Record<string, string | null> => {
-    const choice: Record<string, string | null> = {};
-    for (const variable of variables) {
-      choice[variable.subjectCode] = variable.domain[Math.floor(random() * variable.domain.length)] ?? null;
-    }
-    return choice;
-  };
-
-  let current = randomChoice();
+  let current = randomChoiceOf(variables, random);
   let currentSolution = buildSolution(timetable, selection, prefs, droppedLectures, current);
   insertRanked(best, currentSolution, topK);
 
   for (let i = 0; i < iterations && variables.length > 0; i++) {
     const candidate = { ...current };
     const variable = variables[Math.floor(random() * variables.length)]!;
-    candidate[variable.subjectCode] = variable.domain[Math.floor(random() * variable.domain.length)] ?? null;
+    const value = variable.domain[Math.floor(random() * variable.domain.length)]!;
+    candidate[variable.subjectCode] = value.event?.id ?? null;
 
     const candidateSolution = buildSolution(timetable, selection, prefs, droppedLectures, candidate);
     insertRanked(best, candidateSolution, topK);
@@ -174,7 +218,7 @@ function randomizedFallback(
       currentSolution = candidateSolution;
     } else if (random() < 0.02) {
       // Occasional restart so the walk doesn't get stuck in a local optimum.
-      current = randomChoice();
+      current = randomChoiceOf(variables, random);
       currentSolution = buildSolution(timetable, selection, prefs, droppedLectures, current);
       insertRanked(best, currentSolution, topK);
     }
@@ -182,17 +226,25 @@ function randomizedFallback(
 }
 
 /**
- * Exhaustive DFS with MRV ordering, forward checking against fixed lectures, and a
- * bounded top-K. The decision space is one variable per enabled subject-with-seminars
- * (which group, or none); ★ lectures and seminar-less subjects are fixed input placed
- * before the search begins, and non-★ lecture drops are derived, not searched (see
- * deriveDroppedLectures). Groups touching a day off or a lunch block are filtered out of
- * the domain up front (buildVariables), the same hard-constraint treatment either way — a
- * subject left with no survivor falls back to "no seminar chosen" rather than failing.
+ * Exhaustive DFS with MRV ordering, forward checking and group-collapsing baked into the
+ * domain up front (see `buildVariables`), branch-and-bound pruning, and a bounded top-K.
+ * The decision space is one variable per enabled subject-with-seminars (which group, or
+ * none); ★ lectures and seminar-less subjects are fixed input placed before the search
+ * begins, and non-★ lecture drops are derived, not searched (see deriveDroppedLectures).
+ *
+ * The bound: every score term is non-negative (never a discount for attending more), and a
+ * subject's own collision count can only grow as more variables are assigned — so
+ * `collisionsSoFar * seminarCollisionPerPair + droppedLectureCost` is a valid lower bound on
+ * any completion reachable from the current node, regardless of how the comfort terms
+ * (compactness, gaps, day window, max/day) end up moving once the rest of the assignment is
+ * filled in. Once the top-K list is full, a branch whose bound already exceeds the current
+ * worst-of-top-K can be skipped outright — and because seminarCollisionPerPair dwarfs every
+ * comfort weight, a single stray collision is usually enough to prune a whole subtree.
+ *
  * For the documented scale (tens of combinations for a normal semester) this always
- * completes well under the node budget and the result is provably optimal; past the
- * budget it falls back to randomised local search and is labelled "best found — not
- * proven optimal".
+ * completes well under the node budget and the result is provably optimal; past the budget
+ * it falls back to randomised local search and is labelled "best found — not proven
+ * optimal".
  */
 export function solve(timetable: Timetable, selection: Selection, prefs: Prefs, options: SolveOptions = {}): SolveResult {
   const topK = options.topK ?? 10;
@@ -201,13 +253,15 @@ export function solve(timetable: Timetable, selection: Selection, prefs: Prefs, 
 
   const droppedLectures = deriveDroppedLectures(timetable, selection, prefs.daysOff);
   const fixed = fixedLectures(timetable, selection, droppedLectures);
-  const variables = buildVariables(timetable, selection, prefs.daysOff, prefs.lunch);
+  const variables = buildVariables(timetable, selection, prefs.daysOff, prefs.lunch, fixed);
+  const droppedLectureCost = droppedLectures.size * WEIGHTS.droppedLecturePerEvent;
 
   const best: Solution[] = [];
+  const chosen: (CourseEvent | null)[] = new Array(variables.length).fill(null);
   let nodes = 0;
   let budgetExceeded = false;
 
-  function dfs(index: number, choice: Record<string, string | null>): void {
+  function dfs(index: number, collisionsSoFar: number): void {
     if (budgetExceeded) return;
     nodes++;
     if (nodes > nodeBudget) {
@@ -216,20 +270,37 @@ export function solve(timetable: Timetable, selection: Selection, prefs: Prefs, 
     }
 
     if (index === variables.length) {
+      const choice: Record<string, string | null> = {};
+      for (let i = 0; i < variables.length; i++) choice[variables[i]!.subjectCode] = chosen[i]?.id ?? null;
       insertRanked(best, buildSolution(timetable, selection, prefs, droppedLectures, choice), topK);
       return;
     }
 
     const variable = variables[index]!;
-    for (const value of forwardCheckedDomain(variable, timetable, fixed)) {
-      choice[variable.subjectCode] = value;
-      dfs(index + 1, choice);
+    for (const value of variable.domain) {
+      let collisions = value.fixedCollisions;
+      if (value.event) {
+        for (let j = 0; j < index; j++) {
+          const prior = chosen[j];
+          if (prior && eventsOverlap(prior, value.event)) collisions++;
+        }
+      }
+      const total = collisionsSoFar + collisions;
+
+      // Admissible lower bound: every completion from here costs at least this much, so a
+      // bound that already beats the current worst-of-top-K can never improve on it, not
+      // even as a tie (a genuine tie would need bound === worst, not >).
+      if (best.length >= topK && total * WEIGHTS.seminarCollisionPerPair + droppedLectureCost > best[topK - 1]!.score.total) {
+        continue;
+      }
+
+      chosen[index] = value.event;
+      dfs(index + 1, total);
       if (budgetExceeded) return;
     }
-    delete choice[variable.subjectCode];
   }
 
-  dfs(0, {});
+  dfs(0, 0);
 
   if (budgetExceeded) {
     const iterations = Math.min(20_000, Math.max(200, Math.floor(nodeBudget / 100)));

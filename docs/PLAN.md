@@ -379,21 +379,47 @@ Exhaustive depth-first search with:
 
 - **upfront domain filtering** — groups touching a day off, or their day's lunch block if
   lunch is enabled, are removed before search (same hard-constraint treatment either way);
+- **group collapsing** — groups sharing the exact same day/time (e.g. one lab slot taught by
+  several TAs) are interchangeable for scoring, so all but one representative are folded out
+  of the domain before search starts;
 - **MRV ordering** — variables with the fewest surviving options first;
-- **forward checking** — after each assignment, prune now-conflicting options of the
-  remaining variables; on a domain wipe-out, do not fail — fall back to keeping the
-  collision-carrying options with their heavy penalty, so a schedule is always returned;
-- **bounded top-K** — keep the best 10 complete assignments for the alternatives strip.
+- **hoisted forward checking** — a value colliding with a fixed (always-present) lecture of
+  *another* subject is dropped whenever the same variable has a clean alternative, computed
+  once up front rather than per DFS node; on a domain wipe-out, do not fail — fall back to
+  keeping the collision-carrying options with their heavy penalty, so a schedule is always
+  returned;
+- **LCV-ish value ordering** — within a variable, values are tried in ascending fixed-collision
+  order, so the search finds a strong incumbent (and starts pruning) early;
+- **branch-and-bound** — every score term is non-negative, and a subject's collision count can
+  only grow as more variables are assigned, so `collisionsSoFar * seminarCollisionPerPair +
+  droppedLectureCost` is an admissible lower bound on any completion from the current node.
+  Once the top-K list is full, a branch whose bound already exceeds the current worst-of-top-K
+  is skipped outright — since the collision weight dwarfs every comfort weight, a single stray
+  collision usually prunes a whole subtree;
+- **bounded top-K** — keep the best 10 complete assignments for the alternatives strip, with an
+  early-exit guard so a solution that can't possibly beat the current worst is never even
+  pushed onto the ranked list.
 
-The space is small (23,250 combinations for the current bundled sample; ~10⁶ worst case for a
-heavy semester), so full enumeration yields **proven optimality**. A node budget (~2 M nodes / ~250 ms) guards
-pathological inputs; if exceeded, the solver falls back to randomised-restart hill climbing
-and the result is labelled *"best found — not proven optimal"* rather than claiming
-optimality.
+The space is small (23,250 combinations for the current bundled sample) so full enumeration
+yields **proven optimality** in milliseconds. A heavy real semester (five subjects with
+15-45 groups each, ~10⁷ raw combinations before group collapsing) now also finishes proven
+optimal in well under a second — branch-and-bound plus group collapsing typically cut the
+combinations actually visited by several orders of magnitude. A node budget (2 M nodes) still
+guards pathological inputs with no exploitable structure at all; if exceeded, the solver falls
+back to randomised-restart hill climbing and the result is labelled *"best found — not proven
+optimal"* rather than claiming optimality.
 
 `score.ts` returns a total plus a per-term breakdown — one term per preference section above,
 plus collisions and dropped lectures — so every candidate can explain its rank. Deterministic
 tie-breakers (earlier finish, then lexicographic group ids) keep results stable across runs.
+`resolveAssignment` is only ever called once per candidate (`scoreResolved` scores an
+already-resolved event/overlap list) so the hot path in the solver never resolves twice.
+
+The solve itself runs in a dedicated Web Worker (`solver.worker.ts`), off the React state
+(`schedulerStore.tsx`) via `postMessage`, debounced by 150ms and keyed by a monotonic request
+id so a burst of preference changes (a slider drag, several quick toggles) collapses into one
+solve and a stale in-flight response is dropped rather than overwriting a newer one. This keeps
+the main thread — and the UI — responsive even while a heavy semester is being solved.
 
 ## Session split — status
 

@@ -98,3 +98,47 @@ describe('parseTimetable', () => {
     expect(pv275Group1?.slots[0]).toMatchObject({ day: 'Út', start: 960, end: 1070 });
   });
 });
+
+describe('parseTimetable — group labels that are not purely numeric', () => {
+  function minimalDoc(kod: string): string {
+    return `<?xml version="1.0"?>
+<rozvrh>
+<minhod>480</minhod>
+<maxhod>600</maxhod>
+<hodiny><hodina><od>8:00</od><do>8:50</do></hodina></hodiny>
+<tabulka>
+<den id="Po" rows="1">
+<radek num="1">
+	<slot pdiff="0" diff="10" odcas="08:00" docas="08:50">
+		<mistnosti></mistnosti>
+		<akce><kod>${kod}</kod><nazev>Test subject</nazev><predmetid>1</predmetid><fakulta_url>fi</fakulta_url><obdobi_url>p</obdobi_url></akce>
+		<ucitele></ucitele>
+	</slot>
+</radek>
+</den>
+</tabulka>
+</rozvrh>`;
+  }
+
+  it('treats a letter-only group label (IB000/AA) as a seminar of IB000, not its own lecture', () => {
+    const { subjects } = parseTimetable(minimalDoc('IB000/AA'));
+    expect(subjects).toHaveLength(1);
+    expect(subjects[0]?.code).toBe('IB000');
+    expect(subjects[0]?.lectures).toHaveLength(0);
+    expect(subjects[0]?.seminars).toHaveLength(1);
+    expect(subjects[0]?.seminars[0]).toMatchObject({ id: 'IB000/AA', subjectCode: 'IB000', kind: 'seminar', group: 'AA' });
+  });
+
+  it('treats a lowercase-word group label (PB173/git) as a seminar too', () => {
+    const { subjects } = parseTimetable(minimalDoc('PB173/git'));
+    expect(subjects[0]?.code).toBe('PB173');
+    expect(subjects[0]?.seminars).toHaveLength(1);
+    expect(subjects[0]?.seminars[0]?.group).toBe('git');
+  });
+
+  it('still treats a slash-free code as a lecture', () => {
+    const { subjects } = parseTimetable(minimalDoc('IB000'));
+    expect(subjects[0]?.lectures).toHaveLength(1);
+    expect(subjects[0]?.seminars).toHaveLength(0);
+  });
+});

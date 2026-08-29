@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react';
 import {
   analyzeAllDaysOff,
   analyzeLunch,
@@ -9,10 +9,14 @@ import {
 } from '../domain/analysis';
 import { parseTimetable } from '../domain/parseTimetable';
 import { applyPreset, DEFAULT_PREFS, type PresetId } from '../domain/presets';
-import { solve, type SolveResult } from '../domain/solver';
+import type { SolveResult } from '../domain/solver';
+import type { SolveRequest, SolveResponse } from '../domain/solver.worker';
 import type { Day, Prefs, Selection, Timetable } from '../domain/types';
 
 const STORAGE_KEY = 'schedule-optimizer:v1';
+/** Waits for typing/dragging to settle before kicking off a solve — a slider drag fires many
+ *  preference changes per second, and only the last one matters. */
+const SOLVE_DEBOUNCE_MS = 150;
 
 interface PersistedState {
   xml: string | null;
@@ -215,6 +219,9 @@ export interface SchedulerContextValue {
   lectureConflicts: LectureConflict[];
   lunchAnalysis: LunchAnalysis | null;
   solveResult: SolveResult | null;
+  /** True while a solve is debouncing or running in the worker; the last-known solveResult
+   *  stays visible in the meantime rather than flashing blank. */
+  isSolving: boolean;
   actions: SchedulerActions;
 }
 
@@ -272,10 +279,59 @@ export function SchedulerProvider({ children }: { children: ReactNode }) {
     [state.timetable, state.selection, state.prefs.lunch],
   );
 
-  const solveResult = useMemo(
-    () => (state.timetable ? solve(state.timetable, state.selection, state.prefs) : null),
-    [state.timetable, state.selection, state.prefs],
-  );
+  const [solveResult, setSolveResult] = useState<SolveResult | null>(null);
+  const [isSolving, setIsSolving] = useState(false);
+  const workerRef = useRef<Worker | null>(null);
+  const requestIdRef = useRef(0);
+
+  // The solver runs off the main thread so a heavy real-world timetable — thousands of
+  // node visits even after branch-and-bound — never freezes the UI while it works.
+  useEffect(() => {
+    if (typeof Worker === 'undefined') return; // no worker support: synchronous fallback below covers it
+    const worker = new Worker(new URL('../domain/solver.worker.ts', import.meta.url), { type: 'module' });
+    worker.onmessage = (event: MessageEvent<SolveResponse>) => {
+      if (event.data.requestId !== requestIdRef.current) return; // stale response from a superseded request
+      setSolveResult(event.data.result);
+      setIsSolving(false);
+    };
+    workerRef.current = worker;
+    return () => {
+      worker.terminate();
+      workerRef.current = null;
+    };
+  }, []);
+
+  // Debounced so a slider drag or a burst of toggles — many preference changes per second —
+  // triggers one solve, not dozens; stale in-flight requests are dropped by requestId above.
+  useEffect(() => {
+    const timetable = state.timetable;
+    if (!timetable) {
+      requestIdRef.current++;
+      setSolveResult(null);
+      setIsSolving(false);
+      return;
+    }
+
+    const requestId = ++requestIdRef.current;
+    setIsSolving(true);
+
+    const timeout = setTimeout(() => {
+      const worker = workerRef.current;
+      if (worker) {
+        const request: SolveRequest = { requestId, timetable, selection: state.selection, prefs: state.prefs };
+        worker.postMessage(request);
+      } else {
+        // No worker support in this environment: solve synchronously as a fallback.
+        import('../domain/solver').then(({ solve }) => {
+          if (requestId !== requestIdRef.current) return;
+          setSolveResult(solve(timetable, state.selection, state.prefs));
+          setIsSolving(false);
+        });
+      }
+    }, SOLVE_DEBOUNCE_MS);
+
+    return () => clearTimeout(timeout);
+  }, [state.timetable, state.selection, state.prefs]);
 
   const value: SchedulerContextValue = {
     xml: state.xml,
@@ -287,6 +343,7 @@ export function SchedulerProvider({ children }: { children: ReactNode }) {
     lectureConflicts,
     lunchAnalysis,
     solveResult,
+    isSolving,
     actions,
   };
 

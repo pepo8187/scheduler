@@ -11,7 +11,8 @@ import ThemeToggle from './components/ThemeToggle';
 import { useScheduler } from './state/schedulerStore';
 
 export default function App() {
-  const { timetable, selection, prefs, dayOffAnalysis, lectureConflicts, lunchAnalysis, solveResult } = useScheduler();
+  const { timetable, selection, prefs, dayOffAnalysis, lectureConflicts, lunchAnalysis, solveResult, isSolving } =
+    useScheduler();
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   useEffect(() => {
@@ -50,7 +51,7 @@ export default function App() {
 
           {timetable && solveResult && (
             <section className="panel">
-              <h2 className="panel__title">Alternatives</h2>
+              <h2 className="panel__title">Alternatives{isSolving && <span className="panel__title-hint"> · optimizing…</span>}</h2>
               <AlternativesBar
                 solutions={solutions}
                 provenOptimal={solveResult.provenOptimal}
