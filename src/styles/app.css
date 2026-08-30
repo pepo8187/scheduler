@@ -1143,3 +1143,127 @@
     display: none;
   }
 }
+
+/* --- Advanced scoring controls --- */
+
+.advanced__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-xs);
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.advanced__chevron {
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+}
+
+.advanced__badge {
+  padding: 1px 7px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.advanced__body {
+  margin-top: var(--gap-sm);
+}
+
+.advanced__intro {
+  margin: 0 0 var(--gap-md);
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+  color: var(--text-muted);
+  max-width: 68ch;
+}
+
+.advanced__group {
+  margin-bottom: var(--gap-lg);
+  padding-top: var(--gap-sm);
+  border-top: 1px solid var(--outline);
+}
+
+.advanced__group-title {
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  color: var(--text);
+}
+
+.advanced__group-blurb {
+  margin: 2px 0 var(--gap-sm);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  max-width: 68ch;
+}
+
+.advanced__warn {
+  margin: 0 0 var(--gap-sm);
+  padding: 8px 10px;
+  border-left: 3px solid var(--warn, var(--primary));
+  background: var(--surface-alt);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--text-muted);
+  max-width: 68ch;
+}
+
+.advanced__field {
+  padding: 6px 0 6px 10px;
+  border-left: 2px solid transparent;
+  max-width: 68ch;
+}
+
+.advanced__field--changed {
+  border-left-color: var(--primary);
+}
+
+.advanced__field-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gap-sm);
+  cursor: pointer;
+}
+
+.advanced__field-label {
+  font-size: var(--fs-sm);
+  color: var(--text);
+}
+
+.advanced__field-input {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.advanced__field-input input {
+  width: 8.5rem;
+  text-align: right;
+}
+
+.advanced__unit {
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  width: 2rem;
+}
+
+.advanced__field-hint {
+  margin: 2px 0 0;
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  color: var(--text-faint);
+}
+
+.advanced__default {
+  white-space: nowrap;
+  opacity: 0.85;
+}

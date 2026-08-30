@@ -1,6 +1,6 @@
 import { slotDuringLunch } from './lunch';
 import { eventsOverlap } from './overlap';
-import { resolveAssignment, scoreResolved, WEIGHTS } from './score';
+import { resolveAssignment, scoreResolved } from './score';
 import type { Assignment, CourseEvent, Day, LunchPrefs, Prefs, Selection, Solution, Timetable } from './types';
 
 export interface SolveOptions {
@@ -254,7 +254,7 @@ export function solve(timetable: Timetable, selection: Selection, prefs: Prefs, 
   const droppedLectures = deriveDroppedLectures(timetable, selection, prefs.daysOff);
   const fixed = fixedLectures(timetable, selection, droppedLectures);
   const variables = buildVariables(timetable, selection, prefs.daysOff, prefs.lunch, fixed);
-  const droppedLectureCost = droppedLectures.size * WEIGHTS.droppedLecturePerEvent;
+  const droppedLectureCost = droppedLectures.size * prefs.tuning.droppedLecturePerEvent;
 
   const best: Solution[] = [];
   const chosen: (CourseEvent | null)[] = new Array(variables.length).fill(null);
@@ -290,7 +290,7 @@ export function solve(timetable: Timetable, selection: Selection, prefs: Prefs, 
       // Admissible lower bound: every completion from here costs at least this much, so a
       // bound that already beats the current worst-of-top-K can never improve on it, not
       // even as a tie (a genuine tie would need bound === worst, not >).
-      if (best.length >= topK && total * WEIGHTS.seminarCollisionPerPair + droppedLectureCost > best[topK - 1]!.score.total) {
+      if (best.length >= topK && total * prefs.tuning.seminarCollisionPerPair + droppedLectureCost > best[topK - 1]!.score.total) {
         continue;
       }
 

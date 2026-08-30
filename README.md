@@ -166,6 +166,22 @@ near-universal rather than a matter of taste. Spreading out is the one preferenc
 contradicts it, since deliberately light days are the whole point, so the charge fades as the
 compactness slider moves toward spread and is gone entirely at the extreme.
 
+### Advanced scoring controls
+
+Everything above describes the defaults, and they are argued for rather than guessed — but the
+exchange rate between an hour of dead time and a wasted morning is genuinely personal, and no
+default settles it for everybody. So **every constant the objective is built from is exposed**,
+in a collapsed *Advanced scoring controls* panel at the bottom of the page: the free window and
+the shape of the gap curve, what counts as a full day and what an empty one costs, both ends of
+compactness, the two linear comfort penalties, and the two priority weights. Each shows its
+default, changed ones are marked, and **Reset to defaults** puts them all back.
+
+They live in `prefs.tuning` (`Tuning` in `types.ts`, defaults in `DEFAULT_TUNING` in
+`score.ts`), so they persist with the rest of your preferences and flow to the solver worker
+like any other preference. The priority weights feed the search's admissible lower bound as well
+as the score, so lowering them genuinely changes which schedules the solver will consider —
+that's noted in the panel.
+
 ### Blocking out lunch
 
 **Block out lunch** (off by default) is a hard constraint, the same kind as a day off, just
@@ -231,7 +247,7 @@ src/domain/                     pure TypeScript, no React — unit-testable head
   overlap.ts                       interval overlap + lecture-lecture vs seminar classification
   analysis.ts                      day-off & lunch pre-flight: blockers, drops, dead-subject trade-offs
   lunch.ts                         effective per-day lunch window + slot-overlaps-lunch check
-  score.ts                         the objective and its per-term breakdown
+  score.ts                         the objective, its per-term breakdown, and DEFAULT_TUNING
   solver.ts                        MRV/forward-checking/branch-and-bound DFS, group collapsing, top-10, node-budget fallback
   solver.worker.ts                 runs solve() off the main thread
   presets.ts                       default prefs + the four one-click bundles
@@ -242,7 +258,7 @@ src/state/schedulerStore.tsx    useReducer + Context; persists xml/selection/pre
 src/components/
   FileDrop.tsx                     drag/drop + "Load sample"
   sidebar/                         SubjectList, SubjectCard, TeacherChips, UnscheduledTray
-  prefs/                           PreferencePanel, DayOffToggles, LunchBreak, PresetBar
+  prefs/                           PreferencePanel, DayOffToggles, LunchBreak, PresetBar, AdvancedPanel
   grid/                            WeekGrid, HourRuler, DayRow, EventBlock, Legend
   results/                         AlternativesBar, ScoreBreakdown, DiagnosticsPanel, GapExplainer
   ThemeToggle.tsx

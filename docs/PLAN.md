@@ -196,6 +196,26 @@ a taste. Spread is the one preference that genuinely contradicts it — lightly-
 its whole point — so the charge fades linearly as compactness goes negative and is zero at full
 spread. It does not fade on the cram side: cram wants full days too.
 
+### 3c. Advanced controls — the constants themselves
+
+Every scoring constant lives in `prefs.tuning` (`Tuning` in `types.ts`; defaults in
+`DEFAULT_TUNING`, `score.ts`) rather than as module constants, and `AdvancedPanel.tsx` renders
+them as a collapsed section at the bottom of the main column. Grouped by term, each with its
+default shown and modified ones flagged, plus a Reset to defaults.
+
+Two things this has to get right:
+
+- **The solver's lower bound must read the same values as the score.** `solve()` prunes on
+  `seminarCollisionPerPair` and `droppedLecturePerEvent`; if the bound kept the defaults while
+  the score used the user's numbers, it would prune genuine optima the moment anyone edited
+  them. Covered by a brute-force cross-check under non-default tuning.
+- **Hydration merges `tuning` one level deeper** than the rest of prefs, so a state persisted
+  before a knob existed doesn't leave that knob `undefined` and NaN its way through the score.
+
+Inputs are clamped to each field's min/max and an emptied box is ignored rather than parsed as
+NaN. `gapScaleMinutes` is additionally floored at 1 inside `gapBadness` so a zero cannot blow
+the curve up.
+
 ### 4. Day window — earliest start / latest end
 
 Two time selects for *when the user wants to be at school*, e.g. "nothing before 10:00,
@@ -366,7 +386,7 @@ scheduler/
       overlap.ts          # interval overlap + conflict classification (lecture/seminar)
       analysis.ts         # pre-flight: day/lunch blockers, dead subjects, fixed-lecture conflicts
       lunch.ts            # effective per-day lunch window + slot-overlaps-lunch check
-      score.ts            # objective: one term per preference + breakdown
+      score.ts            # objective: one term per preference + breakdown + DEFAULT_TUNING
       solver.ts           # exhaustive DFS w/ MRV + forward checking, top-K results
       presets.ts          # the four preference bundles
       teacherFilter.ts    # teacher-chip rule: first click exclusive, the rest additive
@@ -377,7 +397,7 @@ scheduler/
     components/
       FileDrop.tsx
       sidebar/SubjectList.tsx  SubjectCard.tsx  TeacherChips.tsx  UnscheduledTray.tsx
-      prefs/PreferencePanel.tsx  DayOffToggles.tsx  LunchBreak.tsx  PresetBar.tsx
+      prefs/PreferencePanel.tsx  DayOffToggles.tsx  LunchBreak.tsx  PresetBar.tsx  AdvancedPanel.tsx
       grid/WeekGrid.tsx  HourRuler.tsx  DayRow.tsx  EventBlock.tsx  Legend.tsx
       ThemeToggle.tsx
       results/AlternativesBar.tsx  ScoreBreakdown.tsx  DiagnosticsPanel.tsx  GapExplainer.tsx

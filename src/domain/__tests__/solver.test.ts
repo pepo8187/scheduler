@@ -248,6 +248,31 @@ describe('solve — brute-force cross-check on the real sample', () => {
     expect(result.solutions[0]?.score.total).toBe(bruteBest);
   });
 
+  it('still matches brute force under custom tuning, so the search bound stays admissible', () => {
+    // The bound prunes on `seminarCollisionPerPair` and `droppedLecturePerEvent`. If it kept
+    // reading the defaults while the score used the user's values, it would prune away genuine
+    // optima the moment anyone touched the Advanced panel.
+    const timetable = parseTimetable(readSampleXml());
+    const selection = buildFullSelection(timetable);
+    const prefs: Prefs = {
+      ...DEFAULT_PREFS,
+      tuning: {
+        ...DEFAULT_PREFS.tuning,
+        seminarCollisionPerPair: 500, // low enough that comfort can rival a collision
+        droppedLecturePerEvent: 50,
+        gapFreeMinutes: 0,
+        sparseDayWeight: 900,
+        gapWeight: 12,
+      },
+    };
+
+    const result = solve(timetable, selection, prefs);
+    const bruteBest = bruteForceMinimum(timetable, selection, prefs);
+
+    expect(result.provenOptimal).toBe(true);
+    expect(result.solutions[0]?.score.total).toBe(bruteBest);
+  });
+
   it('still matches brute force once Tuesday is off and the PV275 trade-off is forced', () => {
     const timetable = parseTimetable(readSampleXml());
     const selection = buildFullSelection(timetable);

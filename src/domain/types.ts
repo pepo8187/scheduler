@@ -85,6 +85,40 @@ export interface LunchPrefs {
   overrides: Partial<Record<Day, DayWindow | null>>;
 }
 
+/**
+ * Every constant the objective is built from, exposed so the Advanced panel can hand them to
+ * the user. Defaults live in `DEFAULT_TUNING` (`score.ts`) and are what the rest of the docs
+ * describe; these exist because the right trade-off between a gap and a wasted morning is
+ * genuinely personal, and no default settles it for everybody.
+ */
+export interface Tuning {
+  // --- Dead time ---
+  gapFreeMinutes: number; // a gap shorter than this is a changeover, not dead time
+  gapScaleMinutes: number; // chargeable minutes at which a gap costs ~63% of the cap
+  gapBadnessCap: number; // the most a single gap can ever cost, however long
+  gapWeight: number; // points per unit of gap badness, before the Gaps slider
+
+  // --- Barely-used days ---
+  sparseDayFullMinutes: number; // class time that makes a day worth the trip
+  sparseDayWeight: number; // cost of a day with nothing on it at all
+
+  // --- Compactness ---
+  cramPerDayUsed: number; // cram side: points per day used
+  spreadPerUnusedWeekday: number; // spread side: points per weekday left unused
+  spreadVarianceTiebreak: number; // spread side: nudge toward evenly loaded days (minutes²)
+
+  // --- Other comfort terms ---
+  dayWindowPerMinute: number; // points per minute scheduled outside the day window
+  maxPerDayPerExcessClass: number; // points per class over the daily cap
+
+  // --- Priorities ---
+  // These keep the ordering the solver relies on: one collision must outweigh any comfort
+  // trade, and a dropped lecture must outweigh comfort but not a collision. They also feed the
+  // search's lower bound, so lowering them changes what the solver is willing to consider.
+  seminarCollisionPerPair: number;
+  droppedLecturePerEvent: number;
+}
+
 export interface Prefs {
   daysOff: Day[]; // hard constraint: no seminar group touching these days is considered
   compactness: number; // -1 (spread) .. 0 (neutral) .. +1 (cram)
@@ -93,6 +127,7 @@ export interface Prefs {
   dayWindow: DayWindow; // when the user wants to be at school; outside is soft-penalised
   maxClassesPerDay: number | null; // soft cap; null = off
   lunch: LunchPrefs; // hard constraint like daysOff, but for a time window instead of a whole day
+  tuning: Tuning; // the scoring constants themselves, surfaced in the Advanced panel
 }
 
 // ---------------------------------------------------------------------------
