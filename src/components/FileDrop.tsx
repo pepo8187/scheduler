@@ -1,7 +1,9 @@
 import { useCallback, useRef, useState, type DragEvent } from 'react';
 import { useScheduler } from '../state/schedulerStore';
 
-const SAMPLE_URL = '/sample-timetable.xml';
+// Resolved against the deployment base rather than the domain root, so the sample still
+// loads when the app is served from a subdirectory (see docs/DEPLOY.md).
+const SAMPLE_URL = `${import.meta.env.BASE_URL}sample-timetable.xml`;
 
 export default function FileDrop() {
   const { timetable, fileName, actions } = useScheduler();
