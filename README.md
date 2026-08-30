@@ -50,6 +50,11 @@ npm run build    # typecheck + production build
 
 Node 22 or newer.
 
+The build is a folder of static files — everything runs in the browser, so any plain file
+host will serve it. Deploying from a subdirectory needs the path at build time
+(`APP_BASE=/~xlogin/scheduler/ npm run build`); [`docs/DEPLOY.md`](docs/DEPLOY.md) has the
+details, including the steps for a faculty `public_html` account.
+
 ## Reading the input format
 
 The export nests as `<rozvrh>` → `<tabulka>` → `<den>` (a weekday) → `<radek>` (a stacking row,
