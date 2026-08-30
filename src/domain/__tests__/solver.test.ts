@@ -3,7 +3,7 @@ import { DEFAULT_PREFS } from '../presets';
 import { parseTimetable } from '../parseTimetable';
 import { computeScore } from '../score';
 import { deriveDroppedLectures, solve } from '../solver';
-import type { Assignment, CourseEvent, Prefs, Slot, Subject, Timetable } from '../types';
+import type { Assignment, CourseEvent, Prefs, Score, Slot, Subject, Timetable } from '../types';
 import { buildFullSelection } from './selection';
 import { readSampleXml } from './sample';
 
@@ -23,6 +23,16 @@ function timetableOf(subjects: Subject[]): Timetable {
   return { minHour: 480, maxHour: 1200, hours: [], subjects, unscheduled: [] };
 }
 
+/**
+ * Everything these fixtures are actually about: collisions, drops, dead time, day window.
+ * The "barely-used days" term is deliberately excluded — these timetables carry an hour or two
+ * of class in total, so every day in them is sparse by construction and that cost is an
+ * unavoidable constant here, not a signal about the choice under test.
+ */
+function penaltyExcludingSparseDays(score: Score): number {
+  return score.terms.filter((t) => t.key !== 'sparseDay').reduce((sum, t) => sum + t.cost, 0);
+}
+
 describe('solve — known answer', () => {
   it('picks the only collision-free seminar group when one exists', () => {
     const lecture = event('AA', 'AA', 'lecture', [slot('Po', 480, 570)]);
@@ -35,7 +45,7 @@ describe('solve — known answer', () => {
 
     expect(result.provenOptimal).toBe(true);
     expect(result.solutions[0]?.assignment.seminarChoice.BB).toBe('BB/01');
-    expect(result.solutions[0]?.score.total).toBe(0);
+    expect(penaltyExcludingSparseDays(result.solutions[0]!.score)).toBe(0);
   });
 
   it('drops a non-★ lecture to honour a day off, but never a ★ one', () => {
@@ -60,7 +70,7 @@ describe('solve — known answer', () => {
 
     const result = solve(timetable, selection, DEFAULT_PREFS);
     expect(result.solutions[0]?.assignment.seminarChoice.BB).toBeNull();
-    expect(result.solutions[0]?.score.total).toBe(0);
+    expect(penaltyExcludingSparseDays(result.solutions[0]!.score)).toBe(0);
   });
 });
 
@@ -77,7 +87,7 @@ describe('solve — never fails', () => {
     expect(result.solutions[0]?.assignment.seminarChoice.BB).toBe('BB/01');
     expect(result.solutions[0]?.overlaps).toHaveLength(1);
     expect(result.solutions[0]?.overlaps[0]?.kind).toBe('seminar');
-    expect(result.solutions[0]?.score.total).toBeGreaterThan(0);
+    expect(penaltyExcludingSparseDays(result.solutions[0]!.score)).toBeGreaterThan(0);
   });
 
   it('returns a (trivial) schedule when there are no subjects at all', () => {
@@ -100,7 +110,7 @@ describe('solve — lunch block', () => {
 
     const result = solve(timetable, selection, prefs);
     expect(result.solutions[0]?.assignment.seminarChoice.BB).toBe('BB/02');
-    expect(result.solutions[0]?.score.total).toBe(0);
+    expect(penaltyExcludingSparseDays(result.solutions[0]!.score)).toBe(0);
   });
 
   it('falls back to "no seminar chosen" once every group for a subject overlaps lunch, without penalty', () => {
@@ -111,7 +121,7 @@ describe('solve — lunch block', () => {
 
     const result = solve(timetable, selection, prefs);
     expect(result.solutions[0]?.assignment.seminarChoice.BB).toBeNull();
-    expect(result.solutions[0]?.score.total).toBe(0);
+    expect(penaltyExcludingSparseDays(result.solutions[0]!.score)).toBe(0);
   });
 
   it('does nothing when lunch is disabled', () => {
@@ -165,7 +175,7 @@ describe('solve — group collapsing', () => {
     const result = solve(timetable, selection, DEFAULT_PREFS);
 
     expect(result.provenOptimal).toBe(true);
-    expect(result.solutions[0]?.score.total).toBe(0);
+    expect(penaltyExcludingSparseDays(result.solutions[0]!.score)).toBe(0);
     expect(identicalGroups.some((g) => g.id === result.solutions[0]?.assignment.seminarChoice.BB)).toBe(true);
   });
 
@@ -179,7 +189,7 @@ describe('solve — group collapsing', () => {
     const result = solve(timetable, selection, DEFAULT_PREFS);
 
     expect(result.solutions[0]?.assignment.seminarChoice.BB).toBe('BB/02');
-    expect(result.solutions[0]?.score.total).toBe(0);
+    expect(penaltyExcludingSparseDays(result.solutions[0]!.score)).toBe(0);
   });
 });
 
@@ -233,6 +243,31 @@ describe('solve — brute-force cross-check on the real sample', () => {
 
     const result = solve(timetable, selection, DEFAULT_PREFS);
     const bruteBest = bruteForceMinimum(timetable, selection, DEFAULT_PREFS);
+
+    expect(result.provenOptimal).toBe(true);
+    expect(result.solutions[0]?.score.total).toBe(bruteBest);
+  });
+
+  it('still matches brute force under custom tuning, so the search bound stays admissible', () => {
+    // The bound prunes on `seminarCollisionPerPair` and `droppedLecturePerEvent`. If it kept
+    // reading the defaults while the score used the user's values, it would prune away genuine
+    // optima the moment anyone touched the Advanced panel.
+    const timetable = parseTimetable(readSampleXml());
+    const selection = buildFullSelection(timetable);
+    const prefs: Prefs = {
+      ...DEFAULT_PREFS,
+      tuning: {
+        ...DEFAULT_PREFS.tuning,
+        seminarCollisionPerPair: 500, // low enough that comfort can rival a collision
+        droppedLecturePerEvent: 50,
+        gapFreeMinutes: 0,
+        sparseDayWeight: 900,
+        gapWeight: 12,
+      },
+    };
+
+    const result = solve(timetable, selection, prefs);
+    const bruteBest = bruteForceMinimum(timetable, selection, prefs);
 
     expect(result.provenOptimal).toBe(true);
     expect(result.solutions[0]?.score.total).toBe(bruteBest);

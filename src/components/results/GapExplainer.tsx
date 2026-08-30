@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { GAP_BADNESS_CAP, gapBadness, gapExponent, WEIGHTS } from '../../domain/score';
+import { gapBadness, gapExponent } from '../../domain/score';
 import { useScheduler } from '../../state/schedulerStore';
 
 const CHART_WIDTH = 640;
@@ -9,9 +9,6 @@ const PLOT_WIDTH = CHART_WIDTH - PAD.left - PAD.right;
 const PLOT_HEIGHT = CHART_HEIGHT - PAD.top - PAD.bottom;
 const MAX_MINUTES = 600; // 10 hours: comfortably past where the curve has flattened out
 const HOUR_TICKS = [0, 2, 4, 6, 8, 10];
-
-/** The Y axis is fixed to the cost of a maxed-out gap at slider 1, so the curve visibly shrinks as `gaps` drops. */
-const MAX_COST = GAP_BADNESS_CAP * WEIGHTS.gapsPerIdleMinute;
 
 /**
  * Convexity is near-impossible to read off a curve by eye, so the chart alone can't show what
@@ -30,24 +27,29 @@ const COMPARISONS: { label: string; a: { label: string; gaps: number[] }; b: { l
     b: { label: 'three 1h breaks', gaps: [60, 60, 60] },
   },
   {
-    label: '1 hour of dead time',
-    a: { label: 'one 1h break', gaps: [60] },
-    b: { label: 'two 30m breaks', gaps: [30, 30] },
+    label: '90 minutes of dead time',
+    a: { label: 'one 90m break', gaps: [90] },
+    b: { label: 'three 30m breaks', gaps: [30, 30, 30] },
   },
 ];
 
 /** Explains the dead-time scoring curve to end users, plotting the curve the sliders actually produce. */
 export default function GapExplainer() {
   const { prefs } = useScheduler();
-  const { gaps, gapShape } = prefs;
+  const { gaps, gapShape, tuning } = prefs;
+  const { gapFreeMinutes, gapBadnessCap, gapWeight } = tuning;
 
   const cost = useMemo(
-    () => (minutes: number) => gapBadness(minutes, gapShape) * gaps * WEIGHTS.gapsPerIdleMinute,
-    [gaps, gapShape],
+    () => (minutes: number) => gapBadness(minutes, gapShape, tuning) * gaps * gapWeight,
+    [gaps, gapShape, gapWeight, tuning],
   );
 
+  // The Y axis is pinned to a maxed-out gap at slider 1, so the curve visibly shrinks as `gaps` drops.
+  const maxCost = gapBadnessCap * gapWeight;
+  const capCost = gapBadnessCap * gaps * gapWeight;
+
   const { path, areaPath, capY } = useMemo(() => {
-    const yMax = MAX_COST * 1.15;
+    const yMax = maxCost * 1.15;
     const toX = (minutes: number) => PAD.left + (minutes / MAX_MINUTES) * PLOT_WIDTH;
     const toY = (value: number) => PAD.top + PLOT_HEIGHT - (value / yMax) * PLOT_HEIGHT;
 
@@ -60,8 +62,8 @@ export default function GapExplainer() {
     const floor = (PAD.top + PLOT_HEIGHT).toFixed(1);
     const areaPath = `${path} L ${toX(MAX_MINUTES).toFixed(1)} ${floor} L ${toX(0).toFixed(1)} ${floor} Z`;
 
-    return { path, areaPath, capY: toY(GAP_BADNESS_CAP * gaps * WEIGHTS.gapsPerIdleMinute) };
-  }, [cost, gaps]);
+    return { path, areaPath, capY: toY(capCost) };
+  }, [cost, capCost, maxCost]);
 
   const rows = useMemo(
     () =>
@@ -78,11 +80,14 @@ export default function GapExplainer() {
       <h2 className="panel__title">How your sliders score dead time</h2>
 
       <p className="gap-explainer__copy">
-        A gap between two classes isn&rsquo;t bad in proportion to its length &mdash; but a longer gap is also{' '}
-        <strong>never scored better</strong> than a shorter one, let alone better than no gap at all. This is the
-        curve your two sliders produce right now: <strong>Gaps</strong> sets how tall it gets (how much dead time
-        costs against everything else), and <strong>Break shape</strong> bends it &mdash; flat near the origin
-        means short breathers are nearly free, steep from the origin means every idle minute counts straight away.
+        The first <strong>{gapFreeMinutes} minutes</strong> of any gap are free &mdash; teaching hours run
+        :00&ndash;:50, so two genuinely back-to-back classes still leave a changeover, and that is a walk between
+        buildings, not dead time. Past that the gap counts, measured from {gapFreeMinutes} minutes: a 90-minute
+        gap is scored as an hour of dead time. It isn&rsquo;t bad in proportion to its length, but a longer gap is
+        also <strong>never scored better</strong> than a shorter one. This is the curve your two sliders produce
+        right now: <strong>Gaps</strong> sets how tall it gets (how much dead time costs against everything else),
+        and <strong>Break shape</strong> bends it &mdash; flat at the start means short breathers stay cheap well
+        past the free window, steep means every chargeable minute counts straight away.
       </p>
 
       <div className="gap-explainer__chart-wrap">
@@ -113,12 +118,28 @@ export default function GapExplainer() {
             className="gap-explainer__axis"
           />
 
+          <rect
+            x={PAD.left}
+            y={PAD.top}
+            width={(gapFreeMinutes / MAX_MINUTES) * PLOT_WIDTH}
+            height={PLOT_HEIGHT}
+            className="gap-explainer__free-window"
+          />
+
           <path d={areaPath} className="gap-explainer__area" />
           <path d={path} className="gap-explainer__curve" />
 
+          <text
+            x={PAD.left + (gapFreeMinutes / MAX_MINUTES) * PLOT_WIDTH + 6}
+            y={PAD.top + 12}
+            className="gap-explainer__free-label"
+          >
+            first {gapFreeMinutes} min free
+          </text>
+
           <line x1={PAD.left} y1={capY} x2={PAD.left + PLOT_WIDTH} y2={capY} className="gap-explainer__peak-guide" />
           <text x={PAD.left + PLOT_WIDTH} y={capY - 6} className="gap-explainer__peak-label" textAnchor="end">
-            cap: {Math.round(GAP_BADNESS_CAP * gaps * WEIGHTS.gapsPerIdleMinute)} points
+            cap: {Math.round(capCost)} points
           </text>
         </svg>
       </div>
@@ -146,15 +167,18 @@ export default function GapExplainer() {
       </ul>
 
       <p className="gap-explainer__copy gap-explainer__copy--muted">
-        Modelled as a Weibull CDF rising from zero to a cap of {GAP_BADNESS_CAP} badness &mdash; so the longest
-        possible gap costs about what a naive per-minute penalty would have charged for a two-hour hole, and every
-        other length is scored relative to that, always non-decreasing in length:
+        Modelled as a Weibull CDF over the chargeable part of the gap, rising from zero to a cap of{' '}
+        {gapBadnessCap} badness &mdash; so the longest possible gap costs about what a naive per-minute penalty
+        would have charged for a two-hour hole, and every other length is scored relative to that, always
+        non-decreasing in length:
       </p>
       <pre className="gap-explainer__formula">
         <code>
-          badness(m) = {GAP_BADNESS_CAP} · (1 &minus; e^(&minus;(m/120)^{gapExponent(gapShape).toFixed(2)}))
+          d = max(0, m &minus; {gapFreeMinutes}) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;// chargeable minutes
           {'\n'}
-          cost(m) &nbsp;&nbsp;= badness(m) × {gaps.toFixed(2)} × {WEIGHTS.gapsPerIdleMinute}
+          badness(m) = {gapBadnessCap} · (1 &minus; e^(&minus;(d/{tuning.gapScaleMinutes})^{gapExponent(gapShape).toFixed(2)}))
+          {'\n'}
+          cost(m) &nbsp;&nbsp;= badness(m) × {gaps.toFixed(2)} × {gapWeight}
         </code>
       </pre>
       <p className="gap-explainer__copy gap-explainer__copy--muted">

@@ -9,10 +9,11 @@ import {
 } from '../domain/analysis';
 import { parseTimetable } from '../domain/parseTimetable';
 import { applyPreset, DEFAULT_PREFS, type PresetId } from '../domain/presets';
+import { DEFAULT_TUNING } from '../domain/score';
 import type { SolveResult } from '../domain/solver';
 import type { SolveRequest, SolveResponse } from '../domain/solver.worker';
 import { applyTeacherChipClick } from '../domain/teacherFilter';
-import type { Day, Prefs, Selection, Timetable } from '../domain/types';
+import type { Day, Prefs, Selection, Timetable, Tuning } from '../domain/types';
 
 const STORAGE_KEY = 'schedule-optimizer:v1';
 /** Waits for typing/dragging to settle before kicking off a solve — a slider drag fires many
@@ -58,7 +59,9 @@ function hydrate(): State {
       selection: persisted.selection ?? {},
       // Shallow-merged onto the defaults so a preference added after a user's last visit
       // (e.g. `lunch`, absent from older persisted state) doesn't come back `undefined`.
-      prefs: { ...DEFAULT_PREFS, ...persisted.prefs },
+      // Nested one level deeper than the rest: a persisted `tuning` from before a knob was
+      // added would otherwise leave that knob undefined and NaN its way through the score.
+      prefs: { ...DEFAULT_PREFS, ...persisted.prefs, tuning: { ...DEFAULT_TUNING, ...persisted.prefs?.tuning } },
     };
   } catch {
     return EMPTY_STATE; // corrupt storage or a bad export: start clean rather than crash
@@ -68,6 +71,8 @@ function hydrate(): State {
 type Action =
   | { type: 'LOAD_TIMETABLE'; xml: string; fileName: string | null }
   | { type: 'SET_PREFS'; prefs: Partial<Prefs> }
+  | { type: 'SET_TUNING'; tuning: Partial<Tuning> }
+  | { type: 'RESET_TUNING' }
   | { type: 'APPLY_PRESET'; id: PresetId }
   | { type: 'TOGGLE_DAY_OFF'; day: Day }
   | { type: 'TOGGLE_SUBJECT'; subjectCode: string }
@@ -95,6 +100,12 @@ function reducer(state: State, action: Action): State {
 
     case 'SET_PREFS':
       return { ...state, prefs: { ...state.prefs, ...action.prefs } };
+
+    case 'SET_TUNING':
+      return { ...state, prefs: { ...state.prefs, tuning: { ...state.prefs.tuning, ...action.tuning } } };
+
+    case 'RESET_TUNING':
+      return { ...state, prefs: { ...state.prefs, tuning: DEFAULT_TUNING } };
 
     case 'APPLY_PRESET':
       return { ...state, prefs: applyPreset(state.prefs, action.id) };
@@ -202,6 +213,8 @@ function reducer(state: State, action: Action): State {
 export interface SchedulerActions {
   loadTimetable: (xml: string, fileName: string | null) => void;
   setPrefs: (prefs: Partial<Prefs>) => void;
+  setTuning: (tuning: Partial<Tuning>) => void;
+  resetTuning: () => void;
   applyPreset: (id: PresetId) => void;
   toggleDayOff: (day: Day) => void;
   toggleSubject: (subjectCode: string) => void;
@@ -254,6 +267,8 @@ export function SchedulerProvider({ children }: { children: ReactNode }) {
     () => ({
       loadTimetable: (xml, fileName) => dispatch({ type: 'LOAD_TIMETABLE', xml, fileName }),
       setPrefs: (prefs) => dispatch({ type: 'SET_PREFS', prefs }),
+      setTuning: (tuning) => dispatch({ type: 'SET_TUNING', tuning }),
+      resetTuning: () => dispatch({ type: 'RESET_TUNING' }),
       applyPreset: (id) => dispatch({ type: 'APPLY_PRESET', id }),
       toggleDayOff: (day) => dispatch({ type: 'TOGGLE_DAY_OFF', day }),
       toggleSubject: (subjectCode) => dispatch({ type: 'TOGGLE_SUBJECT', subjectCode }),

@@ -88,7 +88,8 @@ penalty terms (`src/domain/score.ts`), weighted so more important things always 
 | Seminar collisions | Any overlap involving a seminar (seminar↔seminar or seminar↔lecture) | 100,000 per pair |
 | Dropped lectures | A non-★ lecture dropped to honour a day off | 2,000 per lecture |
 | Compactness | Cram: days used. Spread: unused weekdays first, load-variance as a tiebreak | up to ~30/day |
-| Dead time | Idle time between classes on the same day, weighted by gap length and shaped by *Break shape* (see below) | up to 3/capped-minute |
+| Barely-used days | How far each day used falls short of a full 4h of class — the overhead of showing up | up to 200/day |
+| Dead time | Idle time between classes on the same day past a free 30-minute window, shaped by *Break shape* (see below) | up to 3/capped-minute |
 | Day window | Minutes scheduled outside the requested start/end | 4/minute |
 | Max classes/day | Classes beyond the optional daily cap | 150/class |
 
@@ -97,12 +98,22 @@ term — so the solver only ever trades comfort for comfort, never for a collisi
 lecture overlaps are not scored at all: they're a fact of the export (see below), rendered as
 a badge, and never influence which seminar group gets picked.
 
+### Dead time starts at 30 minutes
+
+**The first 30 minutes of any gap are free.** Teaching hours in a MUNI export run :00–:50, so
+two genuinely back-to-back classes still show a ten-minute changeover — charging for those made
+a perfectly packed day look riddled with dead time, and pushed the solver into absurd choices to
+avoid phantom gaps. Anything up to half an hour is a walk between buildings, not dead time.
+Longer gaps aren't ignored, they're measured from there: a 90-minute gap is scored as an hour of
+dead time. The breakdown reports the raw idle minutes *and* how many gaps are actually being
+charged, so a zero cost beside a pile of idle minutes reads as intended rather than as a bug.
+
 ### Dead time isn't linear
 
-A gap's badness isn't proportional to its length, but it is always *non-decreasing* in
-length: a longer gap is never scored better than a shorter one, and no gap is ever scored
-better than none at all. Beyond that, how bad a gap of a given length feels is a matter of
-taste, so it's yours to set: **two sliders shape the dead-time curve, and the app plots the
+Past the free window, a gap's badness isn't proportional to its length, but it is always
+*non-decreasing*: a longer gap is never scored better than a shorter one, and no gap is ever
+scored better than none at all. Beyond that, how bad a gap of a given length feels is a matter
+of taste, so it's yours to set: **two sliders shape the dead-time curve, and the app plots the
 curve they produce.**
 
 - **Gaps** (*Gaps are fine ←→ No dead time*) sets how *tall* the curve is — how much dead
@@ -112,38 +123,69 @@ curve they produce.**
   split into short breathers?
 
 Bending the curve is what decides fragmentation. Pulled toward *one long break* the curve
-climbs steeply from the origin, so every idle minute counts immediately and splitting dead
-time pays that steep entry cost once per gap — the solver consolidates. Pulled toward
-*several short breaks* the curve stays flat near the origin and only bites for longer
-stretches, so short breathers are close to free and the solver scatters them rather than
-leaving one long hole. At the default midpoint, three classes with a single 3-hour gap beat
-the same day broken up by three 1-hour gaps; slide toward *several short breaks* and that
-ranking flips.
+climbs steeply from the start of the chargeable range, so every chargeable minute counts
+immediately and splitting dead time pays that steep entry cost once per gap — the solver
+consolidates. Pulled toward *several short breaks* the curve stays flat for a while and only
+bites for longer stretches, so short breathers are close to free and the solver scatters them.
 
-One thing holds at *every* slider position: because a single gap can never cost more than the
-cap, consolidating a genuinely long stretch always wins. Three classes with one 6-hour gap
-beat the same idle time fragmented into 2-hour holes no matter your taste — two two-hour holes
-strand you on campus twice, which beats nobody's idea of a good day. Likewise two classes at
-08:00–10:00 and 10:00–12:00 (no gap) always beat the same two at 08:00–10:00 and 18:00–20:00.
-The slider governs the range below saturation, which is where real schedules live.
+Note the free window interacts with this: each gap gets its own 30 free minutes, so three
+1-hour breaks carry only 30 chargeable minutes apiece against a single 3-hour break's 150. From
+the midpoint upward that makes splitting win at the 2–3 hour scale; pull *Break shape* toward
+*one long break* to consolidate those too. Genuinely long stretches consolidate at every
+setting, because a single gap can never cost more than the cap — three 2-hour holes strand you
+on campus three times, which beats nobody's idea of a good day. Likewise two classes at
+08:00–10:00 and 10:00–12:00 always beat the same two at 08:00–10:00 and 18:00–20:00.
 
-`gapBadness()` (`src/domain/score.ts`) models this as a Weibull CDF rising from zero to a cap
-of 120 "minutes" — the longest possible gap costs about what a naive per-minute model would
-have charged for a two-hour hole, and a two-hour hole itself always costs ~63% of the cap:
+`gapBadness()` (`src/domain/score.ts`) models this as a Weibull CDF over the *chargeable* part
+of the gap, rising from zero to a cap of 120 "minutes":
 
 ```
-badness(m) = 120 · (1 − e^(−(m/120)^p))      p = gapExponent(gapShape), 0.5 … 2.5
+d = max(0, m − 30)                     // chargeable minutes
+badness(m) = 120 · (1 − e^(−(d/120)^p))      p = gapExponent(gapShape), 0.5 … 2.5
 ```
 
 `p` is the only thing *Break shape* changes; the cap and the 120-minute scale are fixed, which
 is why the curve is monotonic in length and bounded at every setting. The score has no special
-exemption for lunchtime or any other time of day; only a gap's length matters. If you
-specifically want lunch protected, that's the separate opt-in preference below — not a scoring
-nudge, but a hard block.
+exemption for lunchtime or any other time of day. If you specifically want lunch protected,
+that's the separate opt-in preference below — not a scoring nudge, but a hard block.
 
-The *How your sliders score dead time* panel plots this live and, since convexity is nearly
-impossible to read off a curve by eye, shows the same idle time split two ways at your current
-settings with the arrangement the solver prefers marked.
+The *How your sliders score dead time* panel plots this live, shades the free window, and —
+since convexity is nearly impossible to read off a curve by eye — shows the same idle time split
+two ways at your current settings with the arrangement the solver prefers marked.
+
+### The cost of showing up
+
+A day holding one two-hour seminar costs nearly as much to attend as a full one: the trip, the
+morning, the day being spoken for. Compactness only ever counted days, at 30 points each and
+only when you pushed the slider to cram — so an otherwise-free Friday carrying a single group
+was worth less than a coffee break, and at the neutral default it was worth *nothing*. The
+solver would strand a lone seminar on its own day to dodge a few minutes of gap elsewhere.
+
+**Barely-used days** charges for that overhead instead of for the day. A day carrying 4 hours
+of class or more has earned the trip and costs nothing; below that, the shortfall is charged pro
+rata up to 200 points for a nearly empty one. It ramps smoothly rather than snapping at a
+threshold, so the solver can't perch exactly on the edge of one.
+
+Unlike compactness this is **on by default** — "don't make me come in for one class" is
+near-universal rather than a matter of taste. Spreading out is the one preference that genuinely
+contradicts it, since deliberately light days are the whole point, so the charge fades as the
+compactness slider moves toward spread and is gone entirely at the extreme.
+
+### Advanced scoring controls
+
+Everything above describes the defaults, and they are argued for rather than guessed — but the
+exchange rate between an hour of dead time and a wasted morning is genuinely personal, and no
+default settles it for everybody. So **every constant the objective is built from is exposed**,
+in a collapsed *Advanced scoring controls* panel at the bottom of the page: the free window and
+the shape of the gap curve, what counts as a full day and what an empty one costs, both ends of
+compactness, the two linear comfort penalties, and the two priority weights. Each shows its
+default, changed ones are marked, and **Reset to defaults** puts them all back.
+
+They live in `prefs.tuning` (`Tuning` in `types.ts`, defaults in `DEFAULT_TUNING` in
+`score.ts`), so they persist with the rest of your preferences and flow to the solver worker
+like any other preference. The priority weights feed the search's admissible lower bound as well
+as the score, so lowering them genuinely changes which schedules the solver will consider —
+that's noted in the panel.
 
 ### Blocking out lunch
 
@@ -210,7 +252,7 @@ src/domain/                     pure TypeScript, no React — unit-testable head
   overlap.ts                       interval overlap + lecture-lecture vs seminar classification
   analysis.ts                      day-off & lunch pre-flight: blockers, drops, dead-subject trade-offs
   lunch.ts                         effective per-day lunch window + slot-overlaps-lunch check
-  score.ts                         the objective and its per-term breakdown
+  score.ts                         the objective, its per-term breakdown, and DEFAULT_TUNING
   solver.ts                        MRV/forward-checking/branch-and-bound DFS, group collapsing, top-10, node-budget fallback
   solver.worker.ts                 runs solve() off the main thread
   presets.ts                       default prefs + the four one-click bundles
@@ -221,7 +263,7 @@ src/state/schedulerStore.tsx    useReducer + Context; persists xml/selection/pre
 src/components/
   FileDrop.tsx                     drag/drop + "Load sample"
   sidebar/                         SubjectList, SubjectCard, TeacherChips, UnscheduledTray
-  prefs/                           PreferencePanel, DayOffToggles, LunchBreak, PresetBar
+  prefs/                           PreferencePanel, DayOffToggles, LunchBreak, PresetBar, AdvancedPanel
   grid/                            WeekGrid, HourRuler, DayRow, EventBlock, Legend
   results/                         AlternativesBar, ScoreBreakdown, DiagnosticsPanel, GapExplainer
   ThemeToggle.tsx
