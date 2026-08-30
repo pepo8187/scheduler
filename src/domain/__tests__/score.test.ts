@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_PREFS } from '../presets';
-import { GAP_BADNESS_CAP, computeScore, gapBadness, resolveAssignment, WEIGHTS } from '../score';
+import { GAP_BADNESS_CAP, computeScore, gapBadness, gapExponent, resolveAssignment, WEIGHTS } from '../score';
 import type { Assignment, CourseEvent, Prefs, Slot, Subject, Timetable } from '../types';
 import { buildFullSelection } from './selection';
 
@@ -175,8 +175,10 @@ describe('computeScore — gaps', () => {
     const timetable = timetableOf([subject('AA', [a], []), subject('BB', [b], [])]);
     const selection = buildFullSelection(timetable);
     const score = computeScore(timetable, selection, { ...DEFAULT_PREFS, gaps: 1 }, emptyAssignment());
-    expect(score.terms.find((t) => t.key === 'gaps')?.cost).toBeCloseTo(gapBadness(90) * WEIGHTS.gapsPerIdleMinute);
-    expect(score.terms.find((t) => t.key === 'gaps')?.detail).toBe('90 idle minute(s)');
+    expect(score.terms.find((t) => t.key === 'gaps')?.cost).toBeCloseTo(
+      gapBadness(90, DEFAULT_PREFS.gapShape) * WEIGHTS.gapsPerIdleMinute,
+    );
+    expect(score.terms.find((t) => t.key === 'gaps')?.detail).toBe('90 idle minute(s) in 1 gap(s)');
   });
 
   it('does not care what time of day a gap falls at — no special midday exemption', () => {
@@ -195,15 +197,33 @@ describe('computeScore — gaps', () => {
   });
 
   it('rises with gap length and flattens out, but never gets cheaper for a longer gap', () => {
-    expect(gapBadness(20)).toBeGreaterThan(0);
-    expect(gapBadness(60)).toBeGreaterThan(gapBadness(20));
-    expect(gapBadness(120)).toBeGreaterThan(gapBadness(60));
-    expect(gapBadness(480)).toBeGreaterThan(gapBadness(120)); // an 8-hour gap is never cheaper...
-    // ...but the marginal cost tapers off: the last 360 minutes (120→480) add less badness
-    // than the first 120 did, and it stays under the cap however long the gap gets.
-    expect(gapBadness(480) - gapBadness(120)).toBeLessThan(gapBadness(120));
-    expect(gapBadness(1_000)).toBeLessThan(GAP_BADNESS_CAP);
-    expect(gapBadness(1_000)).toBeGreaterThan(GAP_BADNESS_CAP * 0.99);
+    const shape = DEFAULT_PREFS.gapShape;
+    expect(gapBadness(20, shape)).toBeGreaterThan(0);
+    expect(gapBadness(60, shape)).toBeGreaterThan(gapBadness(20, shape));
+    expect(gapBadness(120, shape)).toBeGreaterThan(gapBadness(60, shape));
+    expect(gapBadness(480, shape)).toBeGreaterThan(gapBadness(120, shape)); // an 8-hour gap is never cheaper...
+    // ...than a 2-hour one, but the second 6 hours of it add far less badness than the first 120 did,
+    // and it stays under the cap however long the gap gets.
+    expect(gapBadness(480, shape) - gapBadness(120, shape)).toBeLessThan(gapBadness(120, shape));
+    expect(gapBadness(1_000, shape)).toBeLessThan(GAP_BADNESS_CAP);
+    expect(gapBadness(1_000, shape)).toBeGreaterThan(GAP_BADNESS_CAP * 0.99);
+  });
+
+  it('stays monotonic in length at every position of the break-shape slider', () => {
+    // The invariant is non-decreasing and never above the cap. Past roughly 8 hours at the
+    // "several short breaks" end the curve saturates to exactly the cap in double precision,
+    // which is the flat top doing its job, not the cap being breached.
+    for (const shape of [0, 0.25, 0.5, 0.75, 1]) {
+      let previous = 0;
+      for (let minutes = 5; minutes <= 900; minutes += 5) {
+        const badness = gapBadness(minutes, shape);
+        expect(badness).toBeGreaterThanOrEqual(previous);
+        expect(badness).toBeLessThanOrEqual(GAP_BADNESS_CAP);
+        previous = badness;
+      }
+      // Strictly rising through the range real schedules actually occupy.
+      expect(gapBadness(240, shape)).toBeGreaterThan(gapBadness(120, shape));
+    }
   });
 
   it('never prefers creating a gap over closing it, however long the alternative gap would be', () => {
@@ -250,6 +270,70 @@ describe('computeScore — gaps', () => {
       twoMediumGapsScore.terms.find((t) => t.key === 'gaps')!.cost,
     );
     expect(oneLongGapScore.terms.find((t) => t.key === 'gaps')!.cost).toBeGreaterThan(0);
+  });
+});
+
+describe('computeScore — break shape slider', () => {
+  /** Same day, same total idle time, split two ways: one 3h hole against three 1h breathers. */
+  const oneLongBreak = timetableOf([
+    subject('AA', [event('AA', 'AA', 'lecture', [slot('Po', 480, 540)])], []),
+    subject('BB', [event('BB', 'BB', 'lecture', [slot('Po', 720, 780)])], []),
+  ]);
+  const shortBreathers = timetableOf([
+    subject('AA', [event('AA', 'AA', 'lecture', [slot('Po', 480, 540)])], []),
+    subject('BB', [event('BB', 'BB', 'lecture', [slot('Po', 600, 660)])], []),
+    subject('CC', [event('CC', 'CC', 'lecture', [slot('Po', 720, 780)])], []),
+    subject('DD', [event('DD', 'DD', 'lecture', [slot('Po', 840, 900)])], []),
+  ]);
+
+  const gapCost = (timetable: ReturnType<typeof timetableOf>, gapShape: number) =>
+    computeScore(timetable, buildFullSelection(timetable), { ...DEFAULT_PREFS, gaps: 1, gapShape }, emptyAssignment())
+      .terms.find((t) => t.key === 'gaps')!.cost;
+
+  it('prefers one consolidated break at the "one long break" end', () => {
+    expect(gapCost(oneLongBreak, 0)).toBeLessThan(gapCost(shortBreathers, 0));
+  });
+
+  it('prefers several short breathers at the "several short breaks" end', () => {
+    expect(gapCost(shortBreathers, 1)).toBeLessThan(gapCost(oneLongBreak, 1));
+  });
+
+  it('makes short gaps steadily cheaper and consolidation steadily less attractive as it rises', () => {
+    let previousShort = Infinity;
+    for (const shape of [0, 0.25, 0.5, 0.75, 1]) {
+      const short = gapBadness(30, shape);
+      expect(short).toBeLessThan(previousShort); // a 30-minute breather only ever gets cheaper
+      previousShort = short;
+    }
+  });
+
+  it('still consolidates a genuinely long stretch at every slider position — the per-gap cap sees to it', () => {
+    // The example that started this: one 6-hour hole beats the same idle time split into 2-hour
+    // holes regardless of taste, because a single gap can never cost more than the cap.
+    for (const shape of [0, 0.25, 0.5, 0.75, 1]) {
+      const consolidated = gapBadness(360, shape);
+      const fragmented = 3 * gapBadness(120, shape);
+      expect(consolidated).toBeLessThan(fragmented);
+    }
+  });
+
+  it('is inert when dead time is not scored at all', () => {
+    const at0 = computeScore(shortBreathers, buildFullSelection(shortBreathers), { ...DEFAULT_PREFS, gaps: 0, gapShape: 0 }, emptyAssignment());
+    const at1 = computeScore(shortBreathers, buildFullSelection(shortBreathers), { ...DEFAULT_PREFS, gaps: 0, gapShape: 1 }, emptyAssignment());
+    expect(at0.total).toBe(at1.total);
+  });
+});
+
+describe('gapExponent', () => {
+  it('rises monotonically across the slider and clamps outside 0..1', () => {
+    expect(gapExponent(0)).toBeLessThan(gapExponent(0.5));
+    expect(gapExponent(0.5)).toBeLessThan(gapExponent(1));
+    expect(gapExponent(-5)).toBe(gapExponent(0));
+    expect(gapExponent(5)).toBe(gapExponent(1));
+  });
+
+  it('is geometrically centred, so the midpoint sits between the two extremes', () => {
+    expect(gapExponent(0.5)).toBeCloseTo(Math.sqrt(gapExponent(0) * gapExponent(1)));
   });
 });
 

@@ -21,7 +21,8 @@ how-it-works.
   a click.
 - **Optimizes for your preferences** — cram everything into as few days as possible or spread it
   out, take a day off, avoid early mornings and late evenings, minimise dead time between
-  classes, cap classes per day. Four presets (*Cram it in*, *Spread evenly*, *Late riser*,
+  classes — and choose whether that dead time lands in one long break or several short ones —
+  cap classes per day. Four presets (*Cram it in*, *Spread evenly*, *Late riser*,
   *Long weekend*) set them all at once as a starting point.
 - **Can block out lunch, opt-in** — turn it on, set a time, and no seminar group touching that
   window is ever chosen. Off by default; each of the five weekdays can use the same window,
@@ -81,7 +82,7 @@ penalty terms (`src/domain/score.ts`), weighted so more important things always 
 | Seminar collisions | Any overlap involving a seminar (seminar↔seminar or seminar↔lecture) | 100,000 per pair |
 | Dropped lectures | A non-★ lecture dropped to honour a day off | 2,000 per lecture |
 | Compactness | Cram: days used. Spread: unused weekdays first, load-variance as a tiebreak | up to ~30/day |
-| Dead time | Idle time between classes on the same day, weighted by gap length (see below) | up to 3/capped-minute |
+| Dead time | Idle time between classes on the same day, weighted by gap length and shaped by *Break shape* (see below) | up to 3/capped-minute |
 | Day window | Minutes scheduled outside the requested start/end | 4/minute |
 | Max classes/day | Classes beyond the optional daily cap | 150/class |
 
@@ -94,23 +95,49 @@ a badge, and never influence which seminar group gets picked.
 
 A gap's badness isn't proportional to its length, but it is always *non-decreasing* in
 length: a longer gap is never scored better than a shorter one, and no gap is ever scored
-better than none at all. A short walk-between-buildings gap is basically free; by a couple of
-hours it really hurts; past that, each extra idle minute matters less — another hour on top of
-an already-dead afternoon barely registers — but the cost never goes down, it only flattens
-out toward a cap. Two classes at 08:00–10:00 and 10:00–12:00 (no gap) therefore always beat
-the same two classes at 08:00–10:00 and 18:00–20:00 (one 8-hour gap), and three classes with a
-single 6-hour gap still score a little better than three classes with two 2-hour gaps (less
-total idle time consolidated into one block beats it fragmented into two) — but both cost
-strictly more than having no gap at all.
+better than none at all. Beyond that, how bad a gap of a given length feels is a matter of
+taste, so it's yours to set: **two sliders shape the dead-time curve, and the app plots the
+curve they produce.**
 
-`gapBadness()` (`src/domain/score.ts`) models this as the Gamma(shape=2) CDF: it rises from
-zero, climbs through the first couple of hours, then flattens out as it asymptotically
-approaches a cap of 120 "minutes" — i.e. the longest possible gap costs about what a naive
-per-minute model would have charged for a two-hour hole, and every other length is scored
-relative to that, but never below a shorter gap's cost. The score itself has no special
+- **Gaps** (*Gaps are fine ←→ No dead time*) sets how *tall* the curve is — how much dead
+  time costs relative to every other comfort term. At 0 the term vanishes entirely.
+- **Break shape** (*One long break ←→ Several short breaks*) *bends* it. This is the
+  continuity control: given the same amount of idle time, should it land in one block or be
+  split into short breathers?
+
+Bending the curve is what decides fragmentation. Pulled toward *one long break* the curve
+climbs steeply from the origin, so every idle minute counts immediately and splitting dead
+time pays that steep entry cost once per gap — the solver consolidates. Pulled toward
+*several short breaks* the curve stays flat near the origin and only bites for longer
+stretches, so short breathers are close to free and the solver scatters them rather than
+leaving one long hole. At the default midpoint, three classes with a single 3-hour gap beat
+the same day broken up by three 1-hour gaps; slide toward *several short breaks* and that
+ranking flips.
+
+One thing holds at *every* slider position: because a single gap can never cost more than the
+cap, consolidating a genuinely long stretch always wins. Three classes with one 6-hour gap
+beat the same idle time fragmented into 2-hour holes no matter your taste — two two-hour holes
+strand you on campus twice, which beats nobody's idea of a good day. Likewise two classes at
+08:00–10:00 and 10:00–12:00 (no gap) always beat the same two at 08:00–10:00 and 18:00–20:00.
+The slider governs the range below saturation, which is where real schedules live.
+
+`gapBadness()` (`src/domain/score.ts`) models this as a Weibull CDF rising from zero to a cap
+of 120 "minutes" — the longest possible gap costs about what a naive per-minute model would
+have charged for a two-hour hole, and a two-hour hole itself always costs ~63% of the cap:
+
+```
+badness(m) = 120 · (1 − e^(−(m/120)^p))      p = gapExponent(gapShape), 0.5 … 2.5
+```
+
+`p` is the only thing *Break shape* changes; the cap and the 120-minute scale are fixed, which
+is why the curve is monotonic in length and bounded at every setting. The score has no special
 exemption for lunchtime or any other time of day; only a gap's length matters. If you
 specifically want lunch protected, that's the separate opt-in preference below — not a scoring
 nudge, but a hard block.
+
+The *How your sliders score dead time* panel plots this live and, since convexity is nearly
+impossible to read off a curve by eye, shows the same idle time split two ways at your current
+settings with the arrangement the solver prefers marked.
 
 ### Blocking out lunch
 
