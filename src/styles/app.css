@@ -447,6 +447,30 @@
   margin-top: 4px;
 }
 
+/* Teacher chips and this subject's own reset share a row; the chips take the space and the
+   reset stays pinned to the end, so it reads as acting on the chips beside it. */
+.subject-card__seminar-tools {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--gap-sm);
+  margin-top: 4px;
+}
+
+.subject-card__seminar-tools .teacher-chips {
+  margin-top: 0;
+  flex: 1;
+}
+
+.subject-card__reset {
+  flex: 0 0 auto;
+}
+
+.button--tiny {
+  padding: 3px 8px;
+  font-size: var(--fs-xs);
+}
+
 .unscheduled-tray {
   margin-top: var(--gap-md);
   padding-top: var(--gap-md);

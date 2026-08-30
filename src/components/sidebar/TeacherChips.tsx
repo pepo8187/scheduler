@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { isUnfiltered, seminarIdsForTeacher } from '../../domain/teacherFilter';
 import type { CourseEvent, Teacher } from '../../domain/types';
 import { useScheduler } from '../../state/schedulerStore';
 
@@ -7,8 +8,9 @@ interface TeacherChipsProps {
   seminars: CourseEvent[];
 }
 
-/** Multi-select a subject's seminar groups by teacher: pick any combination of teachers,
- *  e.g. "I want Ms. Y's and Mr. Z's groups, but not Mr. X's". */
+/** Narrow a subject's seminar groups by teacher. The first click drops everyone else, then
+ *  further clicks add teachers back on — so "I want Ms. Y's and Mr. Z's groups, but not Mr. X's"
+ *  is two clicks rather than clicking away every teacher you don't want. */
 export default function TeacherChips({ subjectCode, seminars }: TeacherChipsProps) {
   const { selection, actions } = useScheduler();
   const subjectSelection = selection[subjectCode];
@@ -21,15 +23,23 @@ export default function TeacherChips({ subjectCode, seminars }: TeacherChipsProp
 
   if (teachers.length < 2) return null; // nothing to narrow between
 
+  const enabled = subjectSelection?.seminars ?? {};
+  // Nothing narrowed away yet, so the next click is the exclusive one.
+  const pristine = isUnfiltered(seminars, enabled);
+
   return (
     <div className="teacher-chips">
       {teachers.map((teacher) => {
-        const teacherSeminarIds = seminars
-          .filter((s) => s.teachers.some((t) => t.id === teacher.id))
-          .map((s) => s.id);
-        const enabledCount = teacherSeminarIds.filter((id) => subjectSelection?.seminars[id]).length;
+        const teacherSeminarIds = seminarIdsForTeacher(seminars, teacher.id);
+        const enabledCount = teacherSeminarIds.filter((id) => enabled[id]).length;
         const active = enabledCount === teacherSeminarIds.length;
         const partial = enabledCount > 0 && !active;
+
+        const title = pristine
+          ? `Show only ${teacher.name}'s groups`
+          : active
+            ? `Hide ${teacher.name}'s groups`
+            : `Also include ${teacher.name}'s groups`;
 
         return (
           <button
@@ -38,7 +48,7 @@ export default function TeacherChips({ subjectCode, seminars }: TeacherChipsProp
             className={`chip${active ? ' chip--active' : ''}${partial ? ' chip--partial' : ''}`}
             aria-pressed={active}
             onClick={() => actions.toggleTeacherGroups(subjectCode, teacher.id)}
-            title={active ? `Hide ${teacher.name}'s groups` : `Include ${teacher.name}'s groups`}
+            title={title}
           >
             {teacher.name}
           </button>

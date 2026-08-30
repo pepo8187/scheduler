@@ -181,10 +181,19 @@ unsatisfiable when a lecture is fixed at 08:00.
 
 ### 5. Seminar teacher preference
 
-Not a slider — it is expressed by selection. The sidebar shows teacher chips per subject;
-clicking a teacher's chip keeps only that teacher's groups enabled. This is the direct
-mechanism for "I only want Mr. X's seminars", and it feeds the solver as a narrowed domain
-rather than as a soft weight, so it is guaranteed to be honoured.
+Not a slider — it is expressed by selection. The sidebar shows teacher chips per subject, and
+the click behaviour is asymmetric on purpose (`applyTeacherChipClick` in `teacherFilter.ts`):
+the **first** click out of the unfiltered state keeps only that teacher's groups and drops the
+rest, and **every click after it adds** a teacher to the selection. Narrowing to one teacher is
+then a single click rather than clicking away every teacher you don't want, while
+"Mr. X's and Ms. Y's, nobody else's" stays a two-click build-up. Clicking a fully-selected
+teacher removes them again; if that would leave the subject with no group at all the filter
+clears back to unfiltered, since an empty subject cannot be scheduled. Each subject card
+carries its own **Reset groups** button (disabled while nothing is narrowed) to get back to the
+pristine state — and therefore back to an exclusive first click.
+
+This is the direct mechanism for "I only want Mr. X's seminars", and it feeds the solver as a
+narrowed domain rather than as a soft weight, so it is guaranteed to be honoured.
 
 ### 6. Max classes per day (soft cap)
 
@@ -232,7 +241,8 @@ collapsible card per subject: subject checkbox, code, name. Inside a card:
   *fixed, not chosen*;
 - the **Seminar group** rows — checkbox per group, group number, day/time, teacher; these are
   presented as the things the user actually picks between;
-- **teacher chips** for bulk-selecting groups by teacher.
+- **teacher chips** for bulk-selecting groups by teacher, sharing a row with that subject's own
+  **Reset groups** button (the reset is per subject — there is no global one).
 
 `<nezname>` items sit in a tray at the bottom, listed but never scheduled.
 
@@ -334,6 +344,7 @@ scheduler/
       score.ts            # objective: one term per preference + breakdown
       solver.ts           # exhaustive DFS w/ MRV + forward checking, top-K results
       presets.ts          # the four preference bundles
+      teacherFilter.ts    # teacher-chip rule: first click exclusive, the rest additive
       format.ts           # minutes<->"HH:MM", day labels
       __tests__/          # vitest: parser, overlap, analysis, lunch, score, solver (+ fixture)
     state/

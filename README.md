@@ -17,8 +17,9 @@ how-it-works.
 - **Reads the IS export** — the same XML `<rozvrh>` format the school system produces. Drop a
   file on the sidebar or click **Load sample** to try the bundled `public/sample-timetable.xml`.
 - **Lets you prune the options** — deselect a whole subject, an individual lecture, or specific
-  seminar groups; mark a lecture ★ required; filter a subject's groups down to one teacher's in
-  a click.
+  seminar groups; mark a lecture ★ required; filter a subject's groups by teacher — the first
+  chip you click keeps only that teacher, each one after it adds another, and a per-subject
+  **Reset groups** button puts them all back.
 - **Optimizes for your preferences** — cram everything into as few days as possible or spread it
   out, take a day off, avoid early mornings and late evenings, minimise dead time between
   classes — and choose whether that dead time lands in one long break or several short ones —
@@ -208,6 +209,7 @@ src/domain/                     pure TypeScript, no React — unit-testable head
   solver.ts                        MRV/forward-checking/branch-and-bound DFS, group collapsing, top-10, node-budget fallback
   solver.worker.ts                 runs solve() off the main thread
   presets.ts                       default prefs + the four one-click bundles
+  teacherFilter.ts                 teacher-chip selection rule: first click exclusive, the rest additive
   format.ts                        minutes<->"HH:MM", day labels, slot/teacher/room descriptions
   __tests__/                       vitest: parser, overlap, analysis, lunch, score, solver (+ real-sample fixture)
 src/state/schedulerStore.tsx    useReducer + Context; persists xml/selection/prefs to localStorage
