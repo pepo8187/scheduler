@@ -143,33 +143,58 @@ Scores the number of days used plus, on the spread side, the variance of per-day
 
 ### 3. Gaps — dead time between classes
 
-Two sliders, because "how much do I mind dead time?" and "what shape should it take?" are
-independent questions and neither can answer the other.
+**The first 30 minutes of any gap are free** (`GAP_FREE_MINUTES`). MUNI teaching hours run
+:00–:50, so consecutive classes always show a ten-minute changeover; charging for those made a
+fully packed day look riddled with dead time and dominated the objective (on a real export, 74%
+of the total penalty was changeovers). Reading `<hodiny>` to detect adjacency was rejected —
+subjects scheduled off the hour grid would slip through — so the curve simply starts at 30
+minutes. Longer gaps are measured from there rather than dropped: a 90-minute gap scores as an
+hour of dead time.
 
-**Gaps**, *Gaps are fine ←→ No dead time*. Penalises idle time between consecutive classes on
-the same day, but not linearly by length: a short gap is cheap, a couple of hours really
-hurts, and beyond that each extra idle minute matters less — but the cost never falls, it only
-flattens out toward a cap, so no gap is ever scored better than a shorter one and none beats
-having no gap at all (`gapBadness()` in `score.ts`, a Weibull CDF capped at 120). High setting
-produces back-to-back blocks; low setting tolerates the occasional hole. At 0 the term
-vanishes and *Break shape* is inert (and disabled in the UI).
+Past that, two sliders, because "how much do I mind dead time?" and "what shape should it take?"
+are independent questions and neither can answer the other.
+
+**Gaps**, *Gaps are fine ←→ No dead time*. Penalises chargeable idle time, but not linearly by
+length: a short gap is cheap, a couple of hours really hurts, and beyond that each extra idle
+minute matters less — but the cost never falls, it only flattens toward a cap, so no gap is ever
+scored better than a shorter one (`gapBadness()` in `score.ts`, a Weibull CDF capped at 120).
+At 0 the term vanishes and *Break shape* is inert (and disabled in the UI).
 
 **Break shape**, *One long break ←→ Several short breaks*. Bends the same curve via its
-exponent (`gapExponent()`, 0.5 … 2.5) without moving the cap or the 120-minute scale, so
-monotonicity survives at every setting. This is the continuity control: the exponent decides
-whether the curve is steep from the origin (every idle minute counts, so splitting pays the
-entry cost repeatedly and dead time consolidates) or flat near it (short breathers are nearly
-free, so the solver scatters them instead of leaving one hole). Note the slider is a *pure
-scalar* on the Gaps side by contrast — multiplying every gap cost by the same number can never
-change which of two gap arrangements wins, which is exactly why fragmentation needed its own
-control rather than a reinterpretation of Gaps or Compactness (the latter being a week-level
-axis that never looks inside a day).
+exponent (`gapExponent()`, 0.5 … 2.5) without moving the cap or the scale, so monotonicity
+survives at every setting. This is the continuity control: the exponent decides whether the
+curve is steep from the start of the chargeable range (splitting pays the entry cost repeatedly,
+so dead time consolidates) or flat (short breathers stay cheap, so the solver scatters them).
+The Gaps slider by contrast is a *pure scalar* — multiplying every gap cost by the same number
+can never change which of two gap arrangements wins, which is why fragmentation needed its own
+control rather than a reinterpretation of Gaps or Compactness (a week-level axis that never
+looks inside a day).
 
-Because a single gap is capped, consolidating a genuinely long stretch wins at every position
-of the shape slider; the slider governs the sub-saturation range where real schedules sit.
-There's no time-of-day exemption (no special "lunch window") — only a gap's length matters, so
-the user can eat whenever a gap happens to fall. `GapExplainer.tsx` plots the resulting curve
-live against the current prefs and lists worked comparisons, since convexity can't be eyeballed.
+Note the free window is per gap, so it tilts the balance toward splitting at the 2–3 hour scale:
+three 1-hour breaks carry 30 chargeable minutes each against one 3-hour break's 150. From the
+midpoint of *Break shape* upward, splitting wins there; the low end still consolidates. Long
+stretches consolidate at every setting because a single gap is capped.
+
+There's no time-of-day exemption (no special "lunch window") — only a gap's length matters.
+`GapExplainer.tsx` plots the resulting curve live, shades the free window, and lists worked
+comparisons, since convexity can't be eyeballed.
+
+### 3b. Barely-used days — the cost of showing up
+
+Always on, independent of the sliders. Compactness only ever counted *days used*, at 30 points
+each and only on the cram side, so a day holding one seminar cost less than a short gap — and
+nothing at all at the neutral default. The solver would strand a lone group on its own day to
+avoid a few minutes of gap elsewhere.
+
+`sparseDayTerm()` charges the **overhead** rather than the day: a day carrying
+`SPARSE_DAY_FULL_MINUTES` (4h) of class or more has earned the trip and costs nothing, and below
+that the shortfall is charged pro rata up to `WEIGHTS.sparseDayFullyEmpty` (200). The ramp is
+continuous so the solver cannot sit exactly on a threshold.
+
+It is on by default because "don't make me come in for one class" is near-universal rather than
+a taste. Spread is the one preference that genuinely contradicts it — lightly-loaded days are
+its whole point — so the charge fades linearly as compactness goes negative and is zero at full
+spread. It does not fade on the cram side: cram wants full days too.
 
 ### 4. Day window — earliest start / latest end
 

@@ -17,6 +17,7 @@ export const WEIGHTS = {
   compactnessVarianceTiebreak: 0.0005, // variance is in minutes²; a secondary nudge only, never enough to add a day
   gapsPerIdleMinute: 3, // applied to capped "badness" minutes (see gapBadness), not raw idle minutes
   dayWindowPerMinuteOutside: 4,
+  sparseDayFullyEmpty: 200, // the whole cost of a trip to campus; scaled by how little is on the day
   maxPerDayPerExcessClass: 150,
 };
 
@@ -96,15 +97,24 @@ function compactnessTerm(byDay: Map<Day, Slot[]>, prefs: Prefs): ScoreTerm {
 /**
  * A gap's badness isn't proportional to its length, but it must never *fall* as the gap grows
  * — a longer hole is never a better outcome than a shorter one, let alone than no gap at all.
- * Modelled as a Weibull CDF rising from zero to `GAP_BADNESS_CAP`: monotonically non-decreasing
- * whatever the shape, so that invariant holds at every slider position.
  *
- * `GAP_SCALE_MINUTES` fixes *where* the curve sits — a two-hour hole always costs ~63% of the
+ * The first `GAP_FREE_MINUTES` of any gap are free. Teaching hours in a MUNI export don't abut:
+ * they run :00-:50, so two genuinely back-to-back classes still show a ten-minute changeover,
+ * and charging for those made a perfectly packed day look like it was riddled with dead time.
+ * Rather than reading the hour grid (subjects scheduled off-grid would slip through), the curve
+ * simply starts at 30 minutes: anything shorter is a corridor transition, not dead time. Longer
+ * gaps aren't ignored, they're just measured from there — a 90-minute gap is scored as an hour
+ * of dead time.
+ *
+ * Past the free window it's a Weibull CDF rising to `GAP_BADNESS_CAP`: monotonically
+ * non-decreasing whatever the shape, so that invariant holds at every slider position.
+ *
+ * `GAP_SCALE_MINUTES` fixes *where* the curve sits — 2 chargeable hours always cost ~63% of the
  * cap — while `prefs.gapShape` bends it, and that bend is the whole "continuity" control:
  *
- * - Low exponent (`gapShape` → 0): concave from the origin. Every idle minute counts straight
- *   away, so splitting dead time into several gaps pays the steep early cost repeatedly and
- *   the solver consolidates it into one long break.
+ * - Low exponent (`gapShape` → 0): concave from the origin. Every chargeable minute counts
+ *   straight away, so splitting dead time into several gaps pays the steep early cost
+ *   repeatedly and the solver consolidates it into one long break.
  * - High exponent (`gapShape` → 1): flat near the origin, then a sharp climb. Short breathers
  *   are close to free and only long stretches really bite, so the solver prefers several short
  *   breaks over one consolidated hole.
@@ -115,6 +125,7 @@ function compactnessTerm(byDay: Map<Day, Slot[]>, prefs: Prefs): ScoreTerm {
  * slider governs the range below saturation, which is where real schedules live.
  */
 export const GAP_BADNESS_CAP = 120;
+export const GAP_FREE_MINUTES = 30; // a changeover, not dead time: the curve starts here
 const GAP_SCALE_MINUTES = 120;
 const GAP_EXPONENT_MIN = 0.5; // gapShape 0: consolidate everything into one break
 const GAP_EXPONENT_MAX = 2.5; // gapShape 1: short breathers are nearly free
@@ -125,15 +136,25 @@ export function gapExponent(gapShape: number): number {
   return GAP_EXPONENT_MIN * (GAP_EXPONENT_MAX / GAP_EXPONENT_MIN) ** clamped;
 }
 
-export function gapBadness(minutes: number, gapShape: number): number {
-  if (minutes <= 0) return 0;
-  return GAP_BADNESS_CAP * (1 - Math.exp(-((minutes / GAP_SCALE_MINUTES) ** gapExponent(gapShape))));
+/** The part of a gap that counts as dead time: everything past the free changeover window. */
+export function chargeableGapMinutes(minutes: number): number {
+  return Math.max(0, minutes - GAP_FREE_MINUTES);
 }
 
-function gapsForDay(slots: Slot[], gapShape: number): { idleMinutes: number; gapCount: number; badness: number } {
+export function gapBadness(minutes: number, gapShape: number): number {
+  const chargeable = chargeableGapMinutes(minutes);
+  if (chargeable <= 0) return 0;
+  return GAP_BADNESS_CAP * (1 - Math.exp(-((chargeable / GAP_SCALE_MINUTES) ** gapExponent(gapShape))));
+}
+
+function gapsForDay(
+  slots: Slot[],
+  gapShape: number,
+): { idleMinutes: number; gapCount: number; chargedCount: number; badness: number } {
   const sorted = [...slots].sort((a, b) => a.start - b.start);
   let idleMinutes = 0;
   let gapCount = 0;
+  let chargedCount = 0;
   let badness = 0;
   for (let i = 1; i < sorted.length; i++) {
     const gapStart = sorted[i - 1]!.end;
@@ -142,26 +163,79 @@ function gapsForDay(slots: Slot[], gapShape: number): { idleMinutes: number; gap
     const length = gapEnd - gapStart;
     idleMinutes += length;
     gapCount += 1;
+    if (chargeableGapMinutes(length) > 0) chargedCount += 1;
     badness += gapBadness(length, gapShape);
   }
-  return { idleMinutes, gapCount, badness };
+  return { idleMinutes, gapCount, chargedCount, badness };
 }
 
 function gapsTerm(byDay: Map<Day, Slot[]>, prefs: Prefs): ScoreTerm {
   let idleMinutes = 0;
   let gapCount = 0;
+  let chargedCount = 0;
   let totalBadness = 0;
   for (const slots of byDay.values()) {
     const day = gapsForDay(slots, prefs.gapShape);
     idleMinutes += day.idleMinutes;
     gapCount += day.gapCount;
+    chargedCount += day.chargedCount;
     totalBadness += day.badness;
   }
 
-  // Idle minutes alone don't explain the cost — how the dead time is split across gaps is
-  // half the story — so the detail reports the gap count next to it.
+  // Idle minutes alone don't explain the cost: how the dead time is split across gaps is half
+  // the story, and gaps inside the free window cost nothing at all — so say how many of them
+  // are actually being charged for, or a zero cost next to a pile of idle minutes reads as a bug.
   const cost = totalBadness * prefs.gaps * WEIGHTS.gapsPerIdleMinute;
-  return { key: 'gaps', label: 'Dead time', cost, detail: `${idleMinutes} idle minute(s) in ${gapCount} gap(s)` };
+  const detail =
+    gapCount === 0
+      ? 'none'
+      : `${idleMinutes} idle minute(s) in ${gapCount} gap(s), ${chargedCount} over ${GAP_FREE_MINUTES} min`;
+  return { key: 'gaps', label: 'Dead time', cost, detail };
+}
+
+/**
+ * A day with a lone two-hour seminar on it costs almost as much to attend as a full one — the
+ * trip, the morning, the day being spoken for — but the score used to charge for it purely by
+ * day *count*, at 30 points a day, and only when the compactness slider was pushed to cram. So
+ * an otherwise-free Friday holding one seminar was worth less than a coffee break, and at the
+ * default neutral compactness it was worth nothing at all: the solver would happily strand a
+ * single group on its own day to dodge a few minutes of gap elsewhere.
+ *
+ * This charges for the *overhead* instead of for the day: the emptier a day, the more of it is
+ * pure commute. A day carrying `SPARSE_DAY_FULL_MINUTES` of class or more has earned the trip
+ * and costs nothing; below that, the shortfall is charged pro rata, so the term ramps smoothly
+ * rather than snapping at a threshold the solver could sit exactly on.
+ *
+ * Unlike compactness this is on by default, because "don't make me come in for one class" is
+ * near-universal rather than a matter of taste. Spreading out is the one preference that
+ * genuinely contradicts it — deliberately lightly-loaded days are the whole point — so the
+ * charge fades as the compactness slider goes negative and is gone entirely at full spread.
+ */
+const SPARSE_DAY_FULL_MINUTES = 240; // 4 hours of class: a day worth showing up for
+
+function sparseDayTerm(byDay: Map<Day, Slot[]>, prefs: Prefs): ScoreTerm {
+  // Full weight from neutral upward; fading to nothing at full spread.
+  const appetite = prefs.compactness < 0 ? 1 + prefs.compactness : 1;
+  if (appetite === 0 || byDay.size === 0) {
+    return { key: 'sparseDay', label: 'Barely-used days', cost: 0, detail: byDay.size === 0 ? 'none' : 'spread: ignored' };
+  }
+
+  let cost = 0;
+  let sparseDays = 0;
+  for (const slots of byDay.values()) {
+    const classMinutes = slots.reduce((sum, s) => sum + (s.end - s.start), 0);
+    const shortfall = Math.max(0, SPARSE_DAY_FULL_MINUTES - classMinutes) / SPARSE_DAY_FULL_MINUTES;
+    if (shortfall === 0) continue;
+    sparseDays += 1;
+    cost += shortfall * WEIGHTS.sparseDayFullyEmpty * appetite;
+  }
+
+  return {
+    key: 'sparseDay',
+    label: 'Barely-used days',
+    cost,
+    detail: sparseDays === 0 ? 'none' : `${sparseDays} day(s) under ${SPARSE_DAY_FULL_MINUTES / 60}h of class`,
+  };
 }
 
 function dayWindowTerm(events: CourseEvent[], prefs: Prefs): ScoreTerm {
@@ -214,6 +288,7 @@ export function scoreResolved(
       detail: droppedLectures.size === 0 ? 'none' : `${droppedLectures.size} dropped`,
     },
     compactnessTerm(byDay, prefs),
+    sparseDayTerm(byDay, prefs),
     gapsTerm(byDay, prefs),
     dayWindowTerm(events, prefs),
     maxPerDayTerm(byDay, prefs),

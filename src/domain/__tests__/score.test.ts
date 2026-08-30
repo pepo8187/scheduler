@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_PREFS } from '../presets';
-import { GAP_BADNESS_CAP, computeScore, gapBadness, gapExponent, resolveAssignment, WEIGHTS } from '../score';
+import {
+  GAP_BADNESS_CAP,
+  GAP_FREE_MINUTES,
+  chargeableGapMinutes,
+  computeScore,
+  gapBadness,
+  gapExponent,
+  resolveAssignment,
+  WEIGHTS,
+} from '../score';
 import type { Assignment, CourseEvent, Prefs, Slot, Subject, Timetable } from '../types';
 import { buildFullSelection } from './selection';
 
@@ -178,7 +187,7 @@ describe('computeScore — gaps', () => {
     expect(score.terms.find((t) => t.key === 'gaps')?.cost).toBeCloseTo(
       gapBadness(90, DEFAULT_PREFS.gapShape) * WEIGHTS.gapsPerIdleMinute,
     );
-    expect(score.terms.find((t) => t.key === 'gaps')?.detail).toBe('90 idle minute(s) in 1 gap(s)');
+    expect(score.terms.find((t) => t.key === 'gaps')?.detail).toBe('90 idle minute(s) in 1 gap(s), 1 over 30 min');
   });
 
   it('does not care what time of day a gap falls at — no special midday exemption', () => {
@@ -198,8 +207,8 @@ describe('computeScore — gaps', () => {
 
   it('rises with gap length and flattens out, but never gets cheaper for a longer gap', () => {
     const shape = DEFAULT_PREFS.gapShape;
-    expect(gapBadness(20, shape)).toBeGreaterThan(0);
-    expect(gapBadness(60, shape)).toBeGreaterThan(gapBadness(20, shape));
+    expect(gapBadness(40, shape)).toBeGreaterThan(0);
+    expect(gapBadness(60, shape)).toBeGreaterThan(gapBadness(40, shape));
     expect(gapBadness(120, shape)).toBeGreaterThan(gapBadness(60, shape));
     expect(gapBadness(480, shape)).toBeGreaterThan(gapBadness(120, shape)); // an 8-hour gap is never cheaper...
     // ...than a 2-hour one, but the second 6 hours of it add far less badness than the first 120 did,
@@ -301,8 +310,8 @@ describe('computeScore — break shape slider', () => {
   it('makes short gaps steadily cheaper and consolidation steadily less attractive as it rises', () => {
     let previousShort = Infinity;
     for (const shape of [0, 0.25, 0.5, 0.75, 1]) {
-      const short = gapBadness(30, shape);
-      expect(short).toBeLessThan(previousShort); // a 30-minute breather only ever gets cheaper
+      const short = gapBadness(60, shape); // 30 chargeable minutes, the free window taken off
+      expect(short).toBeLessThan(previousShort); // a short breather only ever gets cheaper
       previousShort = short;
     }
   });
@@ -321,6 +330,101 @@ describe('computeScore — break shape slider', () => {
     const at0 = computeScore(shortBreathers, buildFullSelection(shortBreathers), { ...DEFAULT_PREFS, gaps: 0, gapShape: 0 }, emptyAssignment());
     const at1 = computeScore(shortBreathers, buildFullSelection(shortBreathers), { ...DEFAULT_PREFS, gaps: 0, gapShape: 1 }, emptyAssignment());
     expect(at0.total).toBe(at1.total);
+  });
+});
+
+describe('computeScore — the free changeover window', () => {
+  it('charges nothing for a gap at or under the free window, at any break shape', () => {
+    for (const shape of [0, 0.5, 1]) {
+      expect(gapBadness(10, shape)).toBe(0); // the :00-:50 hour grid's own changeover
+      expect(gapBadness(GAP_FREE_MINUTES, shape)).toBe(0);
+      expect(gapBadness(GAP_FREE_MINUTES + 1, shape)).toBeGreaterThan(0);
+    }
+  });
+
+  it('measures a longer gap from the end of the free window, not from zero', () => {
+    expect(chargeableGapMinutes(90)).toBe(60);
+    expect(chargeableGapMinutes(10)).toBe(0);
+    // A 90-minute gap is scored as exactly an hour of dead time.
+    expect(gapBadness(90, 0.5)).toBeCloseTo(gapBadness(60 + GAP_FREE_MINUTES, 0.5));
+  });
+
+  it('leaves a back-to-back day on the university hour grid completely free of dead time', () => {
+    // 08:00-08:50, 09:00-09:50, 10:00-10:50: consecutive teaching hours, two 10-minute changeovers.
+    const timetable = timetableOf([
+      subject('AA', [event('AA', 'AA', 'lecture', [slot('Po', 480, 530)])], []),
+      subject('BB', [event('BB', 'BB', 'lecture', [slot('Po', 540, 590)])], []),
+      subject('CC', [event('CC', 'CC', 'lecture', [slot('Po', 600, 650)])], []),
+    ]);
+    const score = computeScore(timetable, buildFullSelection(timetable), { ...DEFAULT_PREFS, gaps: 1 }, emptyAssignment());
+    const gaps = score.terms.find((t) => t.key === 'gaps')!;
+    expect(gaps.cost).toBe(0);
+    // The idle minutes are still reported — they just aren't charged for.
+    expect(gaps.detail).toBe('20 idle minute(s) in 2 gap(s), 0 over 30 min');
+  });
+});
+
+describe('computeScore — barely-used days', () => {
+  const dayWith = (day: Slot['day'], minutes: number) =>
+    subject(`S${day}${minutes}`, [event(`S${day}${minutes}`, `S${day}${minutes}`, 'lecture', [slot(day, 480, 480 + minutes)])], []);
+
+  const sparseCost = (subjects: ReturnType<typeof dayWith>[], prefs = DEFAULT_PREFS) => {
+    const timetable = timetableOf(subjects);
+    return computeScore(timetable, buildFullSelection(timetable), prefs, emptyAssignment()).terms.find(
+      (t) => t.key === 'sparseDay',
+    )!;
+  };
+
+  it('charges nothing for a day that carries a full load', () => {
+    expect(sparseCost([dayWith('Po', 240)]).cost).toBe(0);
+    expect(sparseCost([dayWith('Po', 400)]).cost).toBe(0);
+  });
+
+  it('charges more the emptier the day is', () => {
+    const nearlyFull = sparseCost([dayWith('Po', 200)]).cost;
+    const half = sparseCost([dayWith('Po', 120)]).cost;
+    const lone = sparseCost([dayWith('Po', 50)]).cost;
+    expect(nearlyFull).toBeGreaterThan(0);
+    expect(half).toBeGreaterThan(nearlyFull);
+    expect(lone).toBeGreaterThan(half);
+    expect(lone).toBeLessThan(WEIGHTS.sparseDayFullyEmpty);
+  });
+
+  it('is on at the neutral default, so a lone seminar day costs something without touching a slider', () => {
+    expect(DEFAULT_PREFS.compactness).toBe(0);
+    expect(sparseCost([dayWith('Po', 110)]).cost).toBeGreaterThan(0);
+  });
+
+  it('prefers merging two half-days into one full day', () => {
+    const split = sparseCost([dayWith('Po', 120), dayWith('Út', 120)]).cost;
+    const merged = sparseCost([dayWith('Po', 240)]).cost;
+    expect(merged).toBeLessThan(split);
+  });
+
+  it('fades out as the compactness slider moves toward spread, and is gone at full spread', () => {
+    const day = [dayWith('Po', 110)];
+    const neutral = sparseCost(day, { ...DEFAULT_PREFS, compactness: 0 }).cost;
+    const halfSpread = sparseCost(day, { ...DEFAULT_PREFS, compactness: -0.5 }).cost;
+    const fullSpread = sparseCost(day, { ...DEFAULT_PREFS, compactness: -1 });
+    expect(halfSpread).toBeLessThan(neutral);
+    expect(halfSpread).toBeGreaterThan(0);
+    expect(fullSpread.cost).toBe(0);
+    expect(fullSpread.detail).toBe('spread: ignored');
+  });
+
+  it('does not fade on the cram side — cram wants full days too', () => {
+    const day = [dayWith('Po', 110)];
+    expect(sparseCost(day, { ...DEFAULT_PREFS, compactness: 1 }).cost).toBe(
+      sparseCost(day, { ...DEFAULT_PREFS, compactness: 0 }).cost,
+    );
+  });
+
+  it('beats the gap it would have to create to consolidate a lone class', () => {
+    // The bug this term exists for: a lone 110-minute day, versus merging it onto another day
+    // at the cost of a gap. Merging must win.
+    const lonely = sparseCost([dayWith('Po', 200), dayWith('Út', 110)]).cost;
+    const merged = sparseCost([dayWith('Po', 200)]).cost;
+    expect(lonely - merged).toBeGreaterThan(gapBadness(90, DEFAULT_PREFS.gapShape) * DEFAULT_PREFS.gaps * WEIGHTS.gapsPerIdleMinute);
   });
 });
 

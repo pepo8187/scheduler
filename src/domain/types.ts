@@ -121,6 +121,7 @@ export type ScoreTermKey =
   | 'seminarCollision'
   | 'droppedLecture'
   | 'compactness'
+  | 'sparseDay'
   | 'gaps'
   | 'dayWindow'
   | 'maxPerDay';

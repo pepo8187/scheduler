@@ -852,6 +852,16 @@
   stroke-linecap: round;
 }
 
+.gap-explainer__free-window {
+  fill: var(--text-faint);
+  opacity: 0.09;
+}
+
+.gap-explainer__free-label {
+  fill: var(--text-faint);
+  font-size: 10px;
+}
+
 .gap-explainer__peak-guide {
   stroke: var(--primary);
   stroke-width: 1;
