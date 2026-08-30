@@ -263,6 +263,61 @@ dead-subject warning. A fixed lecture inside the window is left alone (lectures 
 dropped except for a whole day off) but is still surfaced as an informational note
 (`analyzeLunch` in `analysis.ts`) so the limits of the block are visible, not assumed away.
 
+### 9. Variation seed and the Variety slider
+
+Two related controls, addressing the same problem from opposite ends: with up to 400 students
+per first-semester cohort taking identical subjects, a deterministic optimizer hands all of them
+the same schedule and they all register for the same group.
+
+**The seed** (`prefs.seed`) is minted once per browser and persisted with everything else. Every
+random choice in the solver is a pure function of it, so a given student's week is stable across
+re-solves — mandatory, since the store re-solves on every preference change and an unseeded
+`Math.random` would reshuffle the grid on each slider tick. It survives *Reset preferences*,
+`CLEAR` and `LOAD_TIMETABLE`; `DEFAULT_PREFS.seed` is deliberately blank so no seed is ever
+shared by everyone who hasn't touched the control, and `hydrate` mints one for returning visitors
+whose persisted preferences predate the feature. It is editable, so two students can share one on
+purpose. Mechanics in `domain/random.ts`.
+
+Two free applications, always on, both costing zero points:
+
+- **Interchangeable representatives.** `buildVariables` collapses same-signature groups and used
+  to keep the lowest id; the representative is now `pickFrom(members, seed, code, signature)`.
+  Keyed on the signature rather than call order, so it is stable within a solve and one week
+  can't appear twice in the strip under two group numbers.
+- **Tie-breaking.** `makeCompareSolutions(seed)` replaces the lexicographic third sort key with a
+  seeded one, behind score and finish time, which are real preferences. `localeCompare` still
+  backs it as an absolute tiebreak so the ordering stays total under a hash collision.
+
+**The Variety slider** (`prefs.variety`, 0..1, default 0) is the part that isn't free, because
+the Monday lean is not a tie — those weeks genuinely score better. Design constraints and the
+choices they forced (`domain/variety.ts`):
+
+- *Never perturb the objective.* A jittered score would be a lie on screen and would invalidate
+  the branch-and-bound lower bound, which assumes the terms are exactly what `score.ts` computes.
+  So the search runs untouched and re-ranking happens afterwards, within a tolerance band of
+  `variety × tuning.varietyToleranceMax` (default 60 — ordered far below `droppedLecturePerEvent`
+  at 2 000 and `seminarCollisionPerPair` at 100 000, so variation can never buy either).
+- *Search the band before choosing from it.* With variety on, the internal pool grows to
+  `topK × 4` and the DFS bound is relaxed by the tolerance, otherwise the search prunes away
+  exactly the near-optimal-but-different branches the feature wants. `selectDiverse` then trims
+  the pool to `topK` preferring distinct week *shapes*, because forty raw candidates are
+  routinely forty spellings of one Monday week.
+- *Day rankings, not plain jitter.* Each seed gets a uniformly random ranking of Mon–Fri
+  (`dayAffinity`), and the band is ranked by minute-weighted affinity mismatch plus a small
+  jitter tiebreak. Jitter alone is weak when the whole band leans Monday; a per-student ranking
+  is what actually spreads a cohort, and its marginal distribution is uniform by construction.
+- *Present, don't reorder.* `SolveResult.variety.index` marks a rung in the strip; the strip
+  itself stays sorted by true score, and `variety.cost` — the exact gap to rank 1 — is shown.
+
+`SolveResult.interchangeable` reports the collapsed sets so the UI can state the available
+headroom. Without it, a student whose subjects each run a single group reads "nothing changed" as
+a bug rather than as a timetable with nothing to spread across. The bottom-of-page explainer
+demonstrates both mechanisms by running 400 synthetic seeds through the production functions.
+
+Limits, stated in the UI rather than glossed: no coordination between users (this stops the tool
+amplifying concentration, it does not allocate capacity); no spreading where the timetable offers
+no parallel groups; registration order still decides the outcome.
+
 ### Weights and persistence
 
 Each preference contributes `weight × measure` to a single objective. Weights are tuned so
@@ -455,7 +510,9 @@ Exhaustive depth-first search with:
   lunch is enabled, are removed before search (same hard-constraint treatment either way);
 - **group collapsing** — groups sharing the exact same day/time (e.g. one lab slot taught by
   several TAs) are interchangeable for scoring, so all but one representative are folded out
-  of the domain before search starts;
+  of the domain before search starts; the survivor is drawn from the student's seed rather than
+  taken as the lowest group number, which is free (they score identically) and is what stops a
+  whole cohort being funnelled into group 01 — see *Variation seed* above;
 - **MRV ordering** — variables with the fewest surviving options first;
 - **hoisted forward checking** — a value colliding with a fixed (always-present) lecture of
   *another* subject is dropped whenever the same variable has a clean alternative, computed

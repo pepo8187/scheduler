@@ -9,6 +9,7 @@ import {
 } from '../domain/analysis';
 import { parseTimetable } from '../domain/parseTimetable';
 import { applyPreset, DEFAULT_PREFS, type PresetId } from '../domain/presets';
+import { newSeed, normalizeSeed } from '../domain/random';
 import { DEFAULT_TUNING } from '../domain/score';
 import type { SolveResult } from '../domain/solver';
 import type { SolveRequest, SolveResponse } from '../domain/solver.worker';
@@ -44,7 +45,24 @@ function buildDefaultSelection(timetable: Timetable): Selection {
   return selection;
 }
 
-const EMPTY_STATE: State = { xml: null, fileName: null, timetable: null, selection: {}, prefs: DEFAULT_PREFS };
+/**
+ * The defaults, carrying a seed. `DEFAULT_PREFS.seed` is deliberately blank — a seed baked into
+ * a module constant would hand every student the same "random" week — so every path that
+ * resets preferences goes through here and keeps the seed it already had. Resetting your
+ * preferences, clearing the file, or loading next semester's export should never silently move
+ * you into a different seminar group.
+ */
+function freshPrefs(seed: string): Prefs {
+  return { ...DEFAULT_PREFS, seed: seed || newSeed() };
+}
+
+const EMPTY_STATE: State = {
+  xml: null,
+  fileName: null,
+  timetable: null,
+  selection: {},
+  prefs: freshPrefs(''),
+};
 
 function hydrate(): State {
   try {
@@ -61,7 +79,15 @@ function hydrate(): State {
       // (e.g. `lunch`, absent from older persisted state) doesn't come back `undefined`.
       // Nested one level deeper than the rest: a persisted `tuning` from before a knob was
       // added would otherwise leave that knob undefined and NaN its way through the score.
-      prefs: { ...DEFAULT_PREFS, ...persisted.prefs, tuning: { ...DEFAULT_TUNING, ...persisted.prefs?.tuning } },
+      // The seed can't be defaulted like the rest: a returning visitor from before the feature
+      // existed has none stored, and falling back to the shared blank would put every such
+      // visitor on identical "random" choices. Mint a real one instead, then persist it.
+      prefs: {
+        ...DEFAULT_PREFS,
+        ...persisted.prefs,
+        seed: normalizeSeed(persisted.prefs?.seed ?? '') || newSeed(),
+        tuning: { ...DEFAULT_TUNING, ...persisted.prefs?.tuning },
+      },
     };
   } catch {
     return EMPTY_STATE; // corrupt storage or a bad export: start clean rather than crash
@@ -82,6 +108,8 @@ type Action =
   | { type: 'TOGGLE_TEACHER_GROUPS'; subjectCode: string; teacherId: string }
   | { type: 'ENABLE_ALL_SEMINARS'; subjectCode: string }
   | { type: 'DISABLE_ALL_SEMINARS'; subjectCode: string }
+  | { type: 'SET_SEED'; seed: string }
+  | { type: 'REROLL_SEED' }
   | { type: 'RESET_PREFS' }
   | { type: 'CLEAR' };
 
@@ -94,7 +122,7 @@ function reducer(state: State, action: Action): State {
         fileName: action.fileName,
         timetable,
         selection: buildDefaultSelection(timetable),
-        prefs: DEFAULT_PREFS,
+        prefs: freshPrefs(state.prefs.seed),
       };
     }
 
@@ -199,11 +227,20 @@ function reducer(state: State, action: Action): State {
       return { ...state, selection: { ...state.selection, [action.subjectCode]: { ...subjectSelection, seminars } } };
     }
 
+    case 'SET_SEED': {
+      const seed = normalizeSeed(action.seed);
+      if (!seed) return state; // an empty box is mid-edit, not a request for a blank seed
+      return { ...state, prefs: { ...state.prefs, seed } };
+    }
+
+    case 'REROLL_SEED':
+      return { ...state, prefs: { ...state.prefs, seed: newSeed() } };
+
     case 'RESET_PREFS':
-      return { ...state, prefs: DEFAULT_PREFS };
+      return { ...state, prefs: freshPrefs(state.prefs.seed) };
 
     case 'CLEAR':
-      return EMPTY_STATE;
+      return { ...EMPTY_STATE, prefs: freshPrefs(state.prefs.seed) };
 
     default:
       return state;
@@ -222,6 +259,8 @@ export interface SchedulerActions {
   toggleLectureRequired: (subjectCode: string, lectureId: string) => void;
   toggleSeminar: (subjectCode: string, seminarId: string) => void;
   toggleTeacherGroups: (subjectCode: string, teacherId: string) => void;
+  setSeed: (seed: string) => void;
+  rerollSeed: () => void;
   enableAllSeminars: (subjectCode: string) => void;
   disableAllSeminars: (subjectCode: string) => void;
   resetPrefs: () => void;
@@ -278,6 +317,8 @@ export function SchedulerProvider({ children }: { children: ReactNode }) {
       toggleSeminar: (subjectCode, seminarId) => dispatch({ type: 'TOGGLE_SEMINAR', subjectCode, seminarId }),
       toggleTeacherGroups: (subjectCode, teacherId) =>
         dispatch({ type: 'TOGGLE_TEACHER_GROUPS', subjectCode, teacherId }),
+      setSeed: (seed) => dispatch({ type: 'SET_SEED', seed }),
+      rerollSeed: () => dispatch({ type: 'REROLL_SEED' }),
       enableAllSeminars: (subjectCode) => dispatch({ type: 'ENABLE_ALL_SEMINARS', subjectCode }),
       disableAllSeminars: (subjectCode) => dispatch({ type: 'DISABLE_ALL_SEMINARS', subjectCode }),
       resetPrefs: () => dispatch({ type: 'RESET_PREFS' }),

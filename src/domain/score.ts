@@ -30,6 +30,11 @@ export const DEFAULT_TUNING: Tuning = {
 
   seminarCollisionPerPair: 100_000,
   droppedLecturePerEvent: 2_000,
+
+  // Roughly two extra days used at full cram, or half a maxed-out gap at the default Gaps
+  // slider: enough to reach a genuinely different week, nowhere near enough to buy a collision
+  // (100_000) or a dropped lecture (2_000).
+  varietyToleranceMax: 60,
 };
 
 /** The exponent range the Break shape slider maps onto; not user-tunable. */

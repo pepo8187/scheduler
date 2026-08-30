@@ -38,6 +38,10 @@ how-it-works.
   result — see *A real unavoidable collision* below for a case that actually happens on load.
 - **Shows the top 10**, not just one answer — the alternatives strip lets you page through the
   next-best schedules and see how their score breaks down against the one you're looking at.
+- **Doesn't hand your whole year the same schedule** — a personal *variation seed* decides which
+  of the equally-good answers you get, so four hundred people taking the same first-semester
+  subjects don't all get sent to seminar group 01. Free by default; an optional **Variety**
+  slider will trade a few points for a week that leans a different way. See *Variation* below.
 
 ## Running it
 
@@ -186,6 +190,68 @@ They live in `prefs.tuning` (`Tuning` in `types.ts`, defaults in `DEFAULT_TUNING
 like any other preference. The priority weights feed the search's admissible lower bound as well
 as the score, so lowering them genuinely changes which schedules the solver will consider —
 that's noted in the panel.
+
+### Variation — why you aren't handed everyone else's schedule
+
+Up to four hundred people in a first semester take the exact same subjects. Feed the same export
+into an optimizer with the same preferences and it will, quite correctly, compute the same best
+answer for all of them — and then four hundred people register for the same seminar group. The
+optimizer isn't wrong; it simply has no reason to prefer one equally-good answer over another,
+so it always picks the same one. A **variation seed** gives it a reason.
+
+The seed is minted once per browser, persisted with your other preferences, and shown in the
+Preferences panel. Every random choice the solver makes is a pure function of it, so **the same
+seed and the same preferences always produce the same week** — dragging a slider re-solves, it
+doesn't reshuffle. It survives *Reset preferences*, clearing the file, and loading next
+semester's export, because none of those should silently move you into a different group. Reroll
+it for a different draw, or paste a friend's to land in their group deliberately.
+
+Three things used to make a cohort converge. Two of them are free to fix and are always on:
+
+1. **Interchangeable groups.** Faculties open parallel groups precisely to absorb a big year: the
+   same lab, the same hour, several teaching assistants. `buildVariables` collapses groups
+   sharing a day/time signature into one representative, since the score never looks at who
+   teaches a group — and it used to keep the lowest group number, which is how an entire year
+   ended up in group 01. The representative is now drawn from the seed instead. This costs
+   **exactly zero points** and is usually the single biggest effect.
+2. **Score ties.** Two genuinely equal-cost weeks were separated by comparing group ids
+   lexicographically — not a preference at all, just the same systematic bias again. Ties now
+   break per seed, after score and finish time, which are real preferences and still come first.
+
+The third isn't free, and the app says so. **Monday-heavy weeks aren't a tie** — they genuinely
+score better, because the lectures are anchored there and piling seminars onto a day you're
+already on campus for beats opening a fresh one. Moving off that means accepting a slightly worse
+week, so the **Variety** slider is off until you turn it on:
+
+- It never perturbs the score. Jittering the objective would corrupt the number shown to you and
+  break the solver's branch-and-bound lower bound, which assumes the score terms are exactly what
+  `score.ts` says. Instead the search runs untouched and `variety.ts` re-ranks *afterwards*,
+  within a band of `variety × varietyToleranceMax` points (default budget 60 — far below a
+  dropped lecture at 2 000, further still below a collision at 100 000, so variation can never
+  buy either).
+- The alternatives strip stays a truthful ladder, sorted by real score. Variety **marks** a rung
+  rather than reordering them, the price of the pick is printed in points, and the strict optimum
+  stays one click away.
+- Each seed also gets its own ranking of the weekdays, and within the band prefers weeks leaning
+  its way. Plain jitter would be weak here, because the whole near-optimal band can be
+  Monday-heavy; a per-student day ranking is what actually spreads the cohort. Across a year those
+  rankings are uniform, so the week fills out while each person still gets a schedule as good as
+  the best one available to them.
+
+**What it does not do**, stated plainly in the app as well as here: it doesn't coordinate anybody
+— nothing talks to anyone else's copy or to the registration system, so two students can still
+draw the same group. It stops the tool *amplifying* the pile-up; it does not allocate capacity,
+which would need a server that knows who has booked what. It also can't spread what isn't there:
+a subject with one seminar group gives everyone that group. The line under the alternatives strip
+reports how much room your particular timetable actually offered, so "nothing changed" reads as a
+fact about the timetable rather than a broken feature. And registration order still decides
+reality — this proposes, the university's system allocates.
+
+The mechanics live in `domain/random.ts` (hashing, the PRNG, seeds, day rankings) and
+`domain/variety.ts` (the tolerance band and the re-ranking), both pure and unit-tested, including
+the cohort-level distribution claims. The *Why you aren't handed everyone else's schedule* panel
+at the bottom of the page demonstrates them by running a synthetic cohort of 400 seeds through
+the very same functions.
 
 ### Blocking out lunch
 

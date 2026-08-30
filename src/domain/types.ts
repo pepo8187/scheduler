@@ -117,6 +117,14 @@ export interface Tuning {
   // search's lower bound, so lowering them changes what the solver is willing to consider.
   seminarCollisionPerPair: number;
   droppedLecturePerEvent: number;
+
+  // --- Variation ---
+  /**
+   * How many points the Variety slider is allowed to give up, at its maximum, to hand this
+   * student a different week from the next one's. Never enough to buy a collision or a dropped
+   * lecture: those are orders of magnitude larger, deliberately.
+   */
+  varietyToleranceMax: number;
 }
 
 export interface Prefs {
@@ -127,6 +135,19 @@ export interface Prefs {
   dayWindow: DayWindow; // when the user wants to be at school; outside is soft-penalised
   maxClassesPerDay: number | null; // soft cap; null = off
   lunch: LunchPrefs; // hard constraint like daysOff, but for a time window instead of a whole day
+  /**
+   * This student's variation seed. Every random choice the solver makes is a pure function of
+   * it, so the same seed and the same preferences always produce the same week — while a
+   * different seed lands somewhere else entirely. Minted once per browser and persisted; two
+   * people can paste the same one to land in the same seminar group on purpose.
+   */
+  seed: string;
+  /**
+   * 0 (off) .. 1 — how many points to trade away for a week that differs from everyone else's.
+   * Off by default: unlike the free variation the solver applies anyway, this one genuinely
+   * costs the individual something, so it is theirs to opt into. See `domain/variety.ts`.
+   */
+  variety: number;
   tuning: Tuning; // the scoring constants themselves, surfaced in the Advanced panel
 }
 

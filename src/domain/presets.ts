@@ -9,6 +9,14 @@ export const DEFAULT_PREFS: Prefs = {
   dayWindow: { start: 480, end: 1200 }, // matches the grid's own 08:00-20:00 bounds: no nudge by default
   maxClassesPerDay: null,
   lunch: { enabled: false, default: { start: 600, end: 660 }, overrides: {} }, // 10:00-11:00, opt-in
+  // Deliberately blank: a seed baked into a shared constant would hand every student the same
+  // "random" week, which is the exact bug the feature exists to fix. The store mints a real one
+  // per browser (see `schedulerStore`), and every reset preserves it — resetting your
+  // preferences shouldn't move you to a different seminar group.
+  seed: '',
+  // Off by default. The variation the solver applies anyway is free; this one buys a different
+  // week with real points off your own score, so it's yours to opt into knowingly.
+  variety: 0,
   tuning: DEFAULT_TUNING,
 };
 

@@ -7,6 +7,8 @@ import DiagnosticsPanel from './components/results/DiagnosticsPanel';
 import AdvancedPanel from './components/prefs/AdvancedPanel';
 import GapExplainer from './components/results/GapExplainer';
 import ScoreBreakdown from './components/results/ScoreBreakdown';
+import VarietyExplainer from './components/results/VarietyExplainer';
+import VarietyStatus from './components/results/VarietyStatus';
 import SubjectList from './components/sidebar/SubjectList';
 import ThemeToggle from './components/ThemeToggle';
 import { useScheduler } from './state/schedulerStore';
@@ -26,7 +28,9 @@ export default function App() {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   useEffect(() => {
-    setSelectedIndex(0); // a fresh solve invalidates any previously-selected rank
+    // A fresh solve invalidates any previously-selected rank. Land on the rung this student's
+    // seed put forward, which is #1 unless Variety is on.
+    setSelectedIndex(solveResult?.variety.index ?? 0);
   }, [solveResult]);
 
   const solutions = solveResult?.solutions ?? [];
@@ -75,8 +79,10 @@ export default function App() {
                 solutions={solutions}
                 provenOptimal={solveResult.provenOptimal}
                 selectedIndex={selectedIndex}
+                varietyIndex={solveResult.variety.index}
                 onSelect={setSelectedIndex}
               />
+              <VarietyStatus result={solveResult} prefs={prefs} selectedIndex={selectedIndex} />
               {solution && <ScoreBreakdown score={solution.score} />}
               <DiagnosticsPanel
                 solution={solution}
@@ -98,6 +104,8 @@ export default function App() {
           </section>
 
           <GapExplainer />
+
+          <VarietyExplainer />
 
           <AdvancedPanel />
         </main>

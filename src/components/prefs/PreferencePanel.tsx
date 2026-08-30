@@ -3,6 +3,7 @@ import { useScheduler } from '../../state/schedulerStore';
 import DayOffToggles from './DayOffToggles';
 import LunchBreak from './LunchBreak';
 import PresetBar from './PresetBar';
+import VarietyControls from './VarietyControls';
 
 export default function PreferencePanel() {
   const { prefs, actions } = useScheduler();
@@ -124,6 +125,8 @@ export default function PreferencePanel() {
           )}
         </label>
       </div>
+
+      <VarietyControls />
     </div>
   );
 }

@@ -1,15 +1,42 @@
 import { slotDuringLunch } from './lunch';
 import { eventsOverlap } from './overlap';
+import { hashString, mulberry32, pickFrom, unitFrom } from './random';
 import { resolveAssignment, scoreResolved } from './score';
+import { assignmentKey, pickVariety, selectDiverse, varietyTolerance, type VarietyPick } from './variety';
 import type { Assignment, CourseEvent, Day, LunchPrefs, Prefs, Selection, Solution, Timetable } from './types';
+
+/**
+ * How much wider than `topK` the internal candidate pool grows once Variety is on. The band has
+ * to be searched before it can be chosen from, and the strict top ten of a real timetable is
+ * routinely ten permutations of one week. A search parameter, not a scoring constant, so it
+ * stays here rather than in the Advanced panel.
+ */
+const VARIETY_POOL_FACTOR = 4;
 
 export interface SolveOptions {
   /** How many best solutions to keep for the alternatives strip. */
   topK?: number;
   /** DFS node budget before falling back to randomised local search. */
   nodeBudget?: number;
-  /** Injectable RNG so the fallback path is deterministic in tests. */
+  /** Overrides the seeded RNG on the fallback path; tests use it to pin that walk exactly. */
   random?: () => number;
+}
+
+/** One set of seminar groups that meet at the exact same times — interchangeable by definition. */
+export interface InterchangeableGroup {
+  subjectCode: string;
+  /** The shared day/time signature. Also the coordinate the representative was drawn against. */
+  signature: string;
+  /**
+   * The member this seed drew to stand for the set. Standing for the set is not the same as
+   * being scheduled: forward checking can still drop a representative that collides with a
+   * fixed lecture, and the search picks only one value per subject anyway. Confirm it against
+   * the solution being displayed before telling the user it's their group —
+   * `interchangeableFor` in `variety.ts` does exactly that.
+   */
+  representativeId: string;
+  /** Every group meeting at these times, the representative included. Sorted, stable. */
+  memberIds: string[];
 }
 
 export interface SolveResult {
@@ -17,6 +44,14 @@ export interface SolveResult {
   solutions: Solution[];
   /** False once the node budget was exceeded — result is "best found", not proven optimal. */
   provenOptimal: boolean;
+  /** Which solution this student's seed put forward, and what it cost. */
+  variety: VarietyPick;
+  /**
+   * The interchangeable-group sets the search collapsed, chosen ones included. This is the
+   * headroom variation had to work with — and it's worth surfacing regardless, since the
+   * collapse otherwise hides perfectly good alternatives from the user entirely.
+   */
+  interchangeable: InterchangeableGroup[];
 }
 
 interface VariableValue {
@@ -30,6 +65,11 @@ interface VariableValue {
 interface Variable {
   subjectCode: string;
   domain: VariableValue[];
+}
+
+interface BuiltVariables {
+  variables: Variable[];
+  interchangeable: InterchangeableGroup[];
 }
 
 /**
@@ -80,7 +120,8 @@ function slotSignature(event: CourseEvent): string {
  * none of it has to be recomputed per DFS node:
  *  - hard filtering (day off / lunch),
  *  - collapsing groups that meet at the exact same day/time into a single representative
- *    (real exports routinely have many — e.g. one lab slot taught by several TAs),
+ *    (real exports routinely have many — e.g. one lab slot taught by several TAs), drawn
+ *    against the student's seed rather than by lowest group number: see below,
  *  - forward checking against the fixed (always-present) lectures of *other* subjects: a
  *    value that collides with one is dropped whenever the same variable has a clean
  *    alternative, since a clean option always strictly dominates a colliding one here
@@ -90,6 +131,16 @@ function slotSignature(event: CourseEvent): string {
  *    overlapping its own subject's group is never actually penalised.
  * Surviving values are ordered by ascending fixed-collision count so the branch-and-bound in
  * `solve` finds a strong incumbent — and starts pruning — as early as possible.
+ *
+ * The collapse is also the single biggest reason a whole cohort used to receive one identical
+ * schedule. Groups sharing a signature are interchangeable *by construction* — the score never
+ * looks at who teaches one — so which of them represents the class is a free choice, and taking
+ * the lowest group number meant every student in the year was handed group 01 of the same lab.
+ * Drawing the representative from the student's seed instead costs exactly zero points and
+ * spreads the year evenly across the parallel groups a faculty opened precisely to absorb it.
+ * The draw is keyed on the signature, not on call order, so it stays stable across the whole
+ * search: otherwise one week could surface twice in the alternatives strip under two different
+ * group numbers.
  */
 function buildVariables(
   timetable: Timetable,
@@ -97,8 +148,10 @@ function buildVariables(
   daysOff: Day[],
   lunch: LunchPrefs,
   fixed: CourseEvent[],
-): Variable[] {
+  seed: string,
+): BuiltVariables {
   const variables: Variable[] = [];
+  const interchangeable: InterchangeableGroup[] = [];
   for (const subject of timetable.subjects) {
     const subjectSelection = selection[subject.code];
     if (!subjectSelection?.enabled || subject.seminars.length === 0) continue;
@@ -116,14 +169,32 @@ function buildVariables(
 
     const otherFixed = fixed.filter((f) => f.subjectCode !== subject.code);
 
-    const bySignature = new Map<string, CourseEvent>();
+    const bySignature = new Map<string, CourseEvent[]>();
     for (const group of survivors) {
       const sig = slotSignature(group);
-      const existing = bySignature.get(sig);
-      if (!existing || group.id < existing.id) bySignature.set(sig, group); // deterministic representative
+      const members = bySignature.get(sig);
+      if (members) members.push(group);
+      else bySignature.set(sig, [group]);
     }
 
-    const withCollisions: VariableValue[] = [...bySignature.values()].map((event) => ({
+    const representatives: CourseEvent[] = [];
+    for (const [signature, members] of bySignature) {
+      // Sorted first so the draw doesn't depend on the order the export happened to list
+      // groups in — only on the seed and the signature.
+      members.sort((a, b) => a.id.localeCompare(b.id));
+      const chosen = pickFrom(members, seed, subject.code, signature)!;
+      representatives.push(chosen);
+      if (members.length > 1) {
+        interchangeable.push({
+          subjectCode: subject.code,
+          signature,
+          representativeId: chosen.id,
+          memberIds: members.map((m) => m.id),
+        });
+      }
+    }
+
+    const withCollisions: VariableValue[] = representatives.map((event) => ({
       event,
       fixedCollisions: otherFixed.reduce((n, f) => n + (eventsOverlap(f, event) ? 1 : 0), 0),
     }));
@@ -135,7 +206,8 @@ function buildVariables(
     variables.push({ subjectCode: subject.code, domain });
   }
   // MRV: most-constrained variables first, so bad branches are pruned early.
-  return variables.sort((a, b) => a.domain.length - b.domain.length);
+  variables.sort((a, b) => a.domain.length - b.domain.length);
+  return { variables, interchangeable };
 }
 
 function latestFinish(events: CourseEvent[]): number {
@@ -144,19 +216,37 @@ function latestFinish(events: CourseEvent[]): number {
   return max;
 }
 
-function assignmentKey(assignment: Assignment): string {
-  return Object.keys(assignment.seminarChoice)
-    .sort()
-    .map((code) => `${code}=${assignment.seminarChoice[code] ?? '-'}`)
-    .join('|');
-}
+/**
+ * Deterministic tie-break: lowest score, then earliest finish, then the seed's own order.
+ *
+ * The first two keys are real preferences — a cheaper week is better, and among equals an
+ * earlier finish is better. The third used to be lexicographic on group ids, which is not a
+ * preference at all: it just meant that whenever two genuinely equal-cost weeks existed, every
+ * student in the year was handed the one with the lower group numbers. Ordering those ties per
+ * seed instead costs nobody a single point. `localeCompare` still backs it up, so the ordering
+ * stays total even if two keys happen to hash alike.
+ */
+function makeCompareSolutions(seed: string): (a: Solution, b: Solution) => number {
+  const jitter = new Map<string, number>();
+  const jitterOf = (key: string): number => {
+    let value = jitter.get(key);
+    if (value === undefined) {
+      value = unitFrom(seed, 'rank', key);
+      jitter.set(key, value);
+    }
+    return value;
+  };
 
-/** Deterministic tie-break: lowest score, then earliest finish, then lexicographic groups. */
-function compareSolutions(a: Solution, b: Solution): number {
-  if (a.score.total !== b.score.total) return a.score.total - b.score.total;
-  const finishDiff = latestFinish(a.events) - latestFinish(b.events);
-  if (finishDiff !== 0) return finishDiff;
-  return assignmentKey(a.assignment).localeCompare(assignmentKey(b.assignment));
+  return (a, b) => {
+    if (a.score.total !== b.score.total) return a.score.total - b.score.total;
+    const finishDiff = latestFinish(a.events) - latestFinish(b.events);
+    if (finishDiff !== 0) return finishDiff;
+    const keyA = assignmentKey(a.assignment);
+    const keyB = assignmentKey(b.assignment);
+    const jitterDiff = jitterOf(keyA) - jitterOf(keyB);
+    if (jitterDiff !== 0) return jitterDiff;
+    return keyA.localeCompare(keyB);
+  };
 }
 
 function buildSolution(
@@ -173,11 +263,16 @@ function buildSolution(
 }
 
 /** Skips the push/sort/truncate for a candidate that provably can't make the cut. */
-function insertRanked(best: Solution[], solution: Solution, topK: number): void {
-  if (best.length >= topK && compareSolutions(solution, best[topK - 1]!) >= 0) return;
+function insertRanked(
+  best: Solution[],
+  solution: Solution,
+  limit: number,
+  compare: (a: Solution, b: Solution) => number,
+): void {
+  if (best.length >= limit && compare(solution, best[limit - 1]!) >= 0) return;
   best.push(solution);
-  best.sort(compareSolutions);
-  if (best.length > topK) best.length = topK;
+  best.sort(compare);
+  if (best.length > limit) best.length = limit;
 }
 
 function randomChoiceOf(variables: Variable[], random: () => number): Record<string, string | null> {
@@ -196,13 +291,14 @@ function randomizedFallback(
   variables: Variable[],
   droppedLectures: Set<string>,
   best: Solution[],
-  topK: number,
+  limit: number,
+  compare: (a: Solution, b: Solution) => number,
   random: () => number,
   iterations: number,
 ): void {
   let current = randomChoiceOf(variables, random);
   let currentSolution = buildSolution(timetable, selection, prefs, droppedLectures, current);
-  insertRanked(best, currentSolution, topK);
+  insertRanked(best, currentSolution, limit, compare);
 
   for (let i = 0; i < iterations && variables.length > 0; i++) {
     const candidate = { ...current };
@@ -211,7 +307,7 @@ function randomizedFallback(
     candidate[variable.subjectCode] = value.event?.id ?? null;
 
     const candidateSolution = buildSolution(timetable, selection, prefs, droppedLectures, candidate);
-    insertRanked(best, candidateSolution, topK);
+    insertRanked(best, candidateSolution, limit, compare);
 
     if (candidateSolution.score.total <= currentSolution.score.total) {
       current = candidate;
@@ -220,7 +316,7 @@ function randomizedFallback(
       // Occasional restart so the walk doesn't get stuck in a local optimum.
       current = randomChoiceOf(variables, random);
       currentSolution = buildSolution(timetable, selection, prefs, droppedLectures, current);
-      insertRanked(best, currentSolution, topK);
+      insertRanked(best, currentSolution, limit, compare);
     }
   }
 }
@@ -245,16 +341,32 @@ function randomizedFallback(
  * completes well under the node budget and the result is provably optimal; past the budget
  * it falls back to randomised local search and is labelled "best found — not proven
  * optimal".
+ *
+ * Nothing in the search is randomised in the sense of varying run to run: every draw is a pure
+ * function of `prefs.seed`, so a given student re-solving after nudging a slider gets a stable
+ * week rather than a reshuffled one. What the seed changes is *which* of the equally-good
+ * answers is returned — see `buildVariables` and `makeCompareSolutions` for the two free ones,
+ * and `variety.ts` for the one that isn't free.
  */
 export function solve(timetable: Timetable, selection: Selection, prefs: Prefs, options: SolveOptions = {}): SolveResult {
   const topK = options.topK ?? 10;
   const nodeBudget = options.nodeBudget ?? 2_000_000;
-  const random = options.random ?? Math.random;
+  const seed = prefs.seed ?? '';
+  // Seeded, so even the fallback walk is reproducible for a given student; `options.random`
+  // still wins, which is how the tests pin that path exactly.
+  const random = options.random ?? mulberry32(hashString(`${seed} fallback`));
+  const compare = makeCompareSolutions(seed);
 
   const droppedLectures = deriveDroppedLectures(timetable, selection, prefs.daysOff);
   const fixed = fixedLectures(timetable, selection, droppedLectures);
-  const variables = buildVariables(timetable, selection, prefs.daysOff, prefs.lunch, fixed);
+  const { variables, interchangeable } = buildVariables(timetable, selection, prefs.daysOff, prefs.lunch, fixed, seed);
   const droppedLectureCost = droppedLectures.size * prefs.tuning.droppedLecturePerEvent;
+
+  // Variety chooses from a band of near-optimal weeks, so that band has to survive the search
+  // first: widen the pool and let the bound keep anything within tolerance of the worst kept.
+  // Both collapse back to today's behaviour at variety 0.
+  const tolerance = varietyTolerance(prefs);
+  const poolK = tolerance > 0 ? topK * VARIETY_POOL_FACTOR : topK;
 
   const best: Solution[] = [];
   const chosen: (CourseEvent | null)[] = new Array(variables.length).fill(null);
@@ -272,7 +384,7 @@ export function solve(timetable: Timetable, selection: Selection, prefs: Prefs, 
     if (index === variables.length) {
       const choice: Record<string, string | null> = {};
       for (let i = 0; i < variables.length; i++) choice[variables[i]!.subjectCode] = chosen[i]?.id ?? null;
-      insertRanked(best, buildSolution(timetable, selection, prefs, droppedLectures, choice), topK);
+      insertRanked(best, buildSolution(timetable, selection, prefs, droppedLectures, choice), poolK, compare);
       return;
     }
 
@@ -290,7 +402,10 @@ export function solve(timetable: Timetable, selection: Selection, prefs: Prefs, 
       // Admissible lower bound: every completion from here costs at least this much, so a
       // bound that already beats the current worst-of-top-K can never improve on it, not
       // even as a tie (a genuine tie would need bound === worst, not >).
-      if (best.length >= topK && total * prefs.tuning.seminarCollisionPerPair + droppedLectureCost > best[topK - 1]!.score.total) {
+      if (
+        best.length >= poolK &&
+        total * prefs.tuning.seminarCollisionPerPair + droppedLectureCost > best[poolK - 1]!.score.total + tolerance
+      ) {
         continue;
       }
 
@@ -304,8 +419,13 @@ export function solve(timetable: Timetable, selection: Selection, prefs: Prefs, 
 
   if (budgetExceeded) {
     const iterations = Math.min(20_000, Math.max(200, Math.floor(nodeBudget / 100)));
-    randomizedFallback(timetable, selection, prefs, variables, droppedLectures, best, topK, random, iterations);
+    randomizedFallback(timetable, selection, prefs, variables, droppedLectures, best, poolK, compare, random, iterations);
   }
 
-  return { solutions: best, provenOptimal: !budgetExceeded };
+  // The strip stays a truthful ladder — sorted by real score, cheapest first — and variety only
+  // decides which rung is put forward. Presenting a re-ordered list instead would have meant
+  // showing "#1" above a lower-scoring "#2", and the whole point is that the cost is visible.
+  const solutions = tolerance > 0 ? selectDiverse(best, topK, compare) : best.slice(0, topK);
+
+  return { solutions, provenOptimal: !budgetExceeded, variety: pickVariety(solutions, prefs), interchangeable };
 }
