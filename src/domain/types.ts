@@ -88,7 +88,8 @@ export interface LunchPrefs {
 export interface Prefs {
   daysOff: Day[]; // hard constraint: no seminar group touching these days is considered
   compactness: number; // -1 (spread) .. 0 (neutral) .. +1 (cram)
-  gaps: number; // 0 (gaps are fine) .. 1 (no dead time)
+  gaps: number; // 0 (gaps are fine) .. 1 (no dead time) — how much dead time costs
+  gapShape: number; // 0 (one long break) .. 1 (several short breaks) — what shape dead time should take
   dayWindow: DayWindow; // when the user wants to be at school; outside is soft-penalised
   maxClassesPerDay: number | null; // soft cap; null = off
   lunch: LunchPrefs; // hard constraint like daysOff, but for a time window instead of a whole day

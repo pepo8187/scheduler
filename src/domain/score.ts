@@ -96,30 +96,44 @@ function compactnessTerm(byDay: Map<Day, Slot[]>, prefs: Prefs): ScoreTerm {
 /**
  * A gap's badness isn't proportional to its length, but it must never *fall* as the gap grows
  * — a longer hole is never a better outcome than a shorter one, let alone than no gap at all.
- * A short walk-between-buildings gap (a few minutes) is basically free; by a couple of hours
- * it really hurts; past that the marginal pain of each extra idle minute tapers off (another
- * hour on top of an already-dead afternoon barely registers) but the total never goes down —
- * it only approaches a cap.
+ * Modelled as a Weibull CDF rising from zero to `GAP_BADNESS_CAP`: monotonically non-decreasing
+ * whatever the shape, so that invariant holds at every slider position.
  *
- * Modelled as the Gamma(shape=2) CDF: it rises from zero, climbs through the first couple of
- * hours, then flattens out as it asymptotically approaches `GAP_BADNESS_CAP` — the most a
- * single gap, however long, can ever cost. That keeps `WEIGHTS.gapsPerIdleMinute` meaning
- * roughly what it always did ("cost per minute, near the steepest part of the curve"), while
- * guaranteeing gapBadness is non-decreasing in `minutes`.
+ * `GAP_SCALE_MINUTES` fixes *where* the curve sits — a two-hour hole always costs ~63% of the
+ * cap — while `prefs.gapShape` bends it, and that bend is the whole "continuity" control:
+ *
+ * - Low exponent (`gapShape` → 0): concave from the origin. Every idle minute counts straight
+ *   away, so splitting dead time into several gaps pays the steep early cost repeatedly and
+ *   the solver consolidates it into one long break.
+ * - High exponent (`gapShape` → 1): flat near the origin, then a sharp climb. Short breathers
+ *   are close to free and only long stretches really bite, so the solver prefers several short
+ *   breaks over one consolidated hole.
+ *
+ * The per-gap cap means a single gap can only ever cost so much, so consolidating a genuinely
+ * long stretch wins at every slider position — two two-hour holes strand you on campus twice,
+ * which nobody prefers to one six-hour break, however relaxed they are about short gaps. The
+ * slider governs the range below saturation, which is where real schedules live.
  */
 export const GAP_BADNESS_CAP = 120;
-const GAP_SHAPE_THETA = 60;
+const GAP_SCALE_MINUTES = 120;
+const GAP_EXPONENT_MIN = 0.5; // gapShape 0: consolidate everything into one break
+const GAP_EXPONENT_MAX = 2.5; // gapShape 1: short breathers are nearly free
 
-export function gapBadness(minutes: number): number {
-  if (minutes <= 0) return 0;
-  const x = minutes / GAP_SHAPE_THETA;
-  const cdf = 1 - Math.exp(-x) * (1 + x);
-  return GAP_BADNESS_CAP * cdf;
+/** Maps the 0..1 `gapShape` slider onto the curve's exponent, geometrically so the midpoint is neutral. */
+export function gapExponent(gapShape: number): number {
+  const clamped = Math.min(1, Math.max(0, gapShape));
+  return GAP_EXPONENT_MIN * (GAP_EXPONENT_MAX / GAP_EXPONENT_MIN) ** clamped;
 }
 
-function gapsForDay(slots: Slot[]): { idleMinutes: number; badness: number } {
+export function gapBadness(minutes: number, gapShape: number): number {
+  if (minutes <= 0) return 0;
+  return GAP_BADNESS_CAP * (1 - Math.exp(-((minutes / GAP_SCALE_MINUTES) ** gapExponent(gapShape))));
+}
+
+function gapsForDay(slots: Slot[], gapShape: number): { idleMinutes: number; gapCount: number; badness: number } {
   const sorted = [...slots].sort((a, b) => a.start - b.start);
   let idleMinutes = 0;
+  let gapCount = 0;
   let badness = 0;
   for (let i = 1; i < sorted.length; i++) {
     const gapStart = sorted[i - 1]!.end;
@@ -127,22 +141,27 @@ function gapsForDay(slots: Slot[]): { idleMinutes: number; badness: number } {
     if (gapEnd <= gapStart) continue; // overlapping or touching: no dead time here
     const length = gapEnd - gapStart;
     idleMinutes += length;
-    badness += gapBadness(length);
+    gapCount += 1;
+    badness += gapBadness(length, gapShape);
   }
-  return { idleMinutes, badness };
+  return { idleMinutes, gapCount, badness };
 }
 
 function gapsTerm(byDay: Map<Day, Slot[]>, prefs: Prefs): ScoreTerm {
   let idleMinutes = 0;
+  let gapCount = 0;
   let totalBadness = 0;
   for (const slots of byDay.values()) {
-    const day = gapsForDay(slots);
+    const day = gapsForDay(slots, prefs.gapShape);
     idleMinutes += day.idleMinutes;
+    gapCount += day.gapCount;
     totalBadness += day.badness;
   }
 
+  // Idle minutes alone don't explain the cost — how the dead time is split across gaps is
+  // half the story — so the detail reports the gap count next to it.
   const cost = totalBadness * prefs.gaps * WEIGHTS.gapsPerIdleMinute;
-  return { key: 'gaps', label: 'Dead time', cost, detail: `${idleMinutes} idle minute(s)` };
+  return { key: 'gaps', label: 'Dead time', cost, detail: `${idleMinutes} idle minute(s) in ${gapCount} gap(s)` };
 }
 
 function dayWindowTerm(events: CourseEvent[], prefs: Prefs): ScoreTerm {

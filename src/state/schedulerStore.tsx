@@ -11,6 +11,7 @@ import { parseTimetable } from '../domain/parseTimetable';
 import { applyPreset, DEFAULT_PREFS, type PresetId } from '../domain/presets';
 import type { SolveResult } from '../domain/solver';
 import type { SolveRequest, SolveResponse } from '../domain/solver.worker';
+import { applyTeacherChipClick } from '../domain/teacherFilter';
 import type { Day, Prefs, Selection, Timetable } from '../domain/types';
 
 const STORAGE_KEY = 'schedule-optimizer:v1';
@@ -76,7 +77,6 @@ type Action =
   | { type: 'TOGGLE_TEACHER_GROUPS'; subjectCode: string; teacherId: string }
   | { type: 'ENABLE_ALL_SEMINARS'; subjectCode: string }
   | { type: 'DISABLE_ALL_SEMINARS'; subjectCode: string }
-  | { type: 'RESET_ALL_SEMINARS' }
   | { type: 'RESET_PREFS' }
   | { type: 'CLEAR' };
 
@@ -166,14 +166,9 @@ function reducer(state: State, action: Action): State {
       const timetableSubject = state.timetable?.subjects.find((s) => s.code === action.subjectCode);
       const subjectSelection = state.selection[action.subjectCode];
       if (!timetableSubject || !subjectSelection) return state;
-      const teacherSeminarIds = timetableSubject.seminars
-        .filter((s) => s.teachers.some((t) => t.id === action.teacherId))
-        .map((s) => s.id);
-      // Fully selected already -> deselect; otherwise (none or partly enabled) -> select all,
-      // so a subject with several teachers can have any combination of them active at once.
-      const fullySelected = teacherSeminarIds.every((id) => subjectSelection.seminars[id]);
-      const seminars = { ...subjectSelection.seminars };
-      for (const id of teacherSeminarIds) seminars[id] = !fullySelected;
+      // The rule itself (first click exclusive, the rest additive) lives in the domain so it can
+      // be tested without a DOM.
+      const seminars = applyTeacherChipClick(timetableSubject.seminars, subjectSelection.seminars, action.teacherId);
       return { ...state, selection: { ...state.selection, [action.subjectCode]: { ...subjectSelection, seminars } } };
     }
 
@@ -191,20 +186,6 @@ function reducer(state: State, action: Action): State {
       if (!timetableSubject || !subjectSelection) return state;
       const seminars = Object.fromEntries(timetableSubject.seminars.map((s) => [s.id, false]));
       return { ...state, selection: { ...state.selection, [action.subjectCode]: { ...subjectSelection, seminars } } };
-    }
-
-    case 'RESET_ALL_SEMINARS': {
-      if (!state.timetable) return state;
-      const selection = { ...state.selection };
-      for (const subject of state.timetable.subjects) {
-        const subjectSelection = selection[subject.code];
-        if (!subjectSelection) continue;
-        selection[subject.code] = {
-          ...subjectSelection,
-          seminars: Object.fromEntries(subject.seminars.map((s) => [s.id, true])),
-        };
-      }
-      return { ...state, selection };
     }
 
     case 'RESET_PREFS':
@@ -230,7 +211,6 @@ export interface SchedulerActions {
   toggleTeacherGroups: (subjectCode: string, teacherId: string) => void;
   enableAllSeminars: (subjectCode: string) => void;
   disableAllSeminars: (subjectCode: string) => void;
-  resetAllSeminars: () => void;
   resetPrefs: () => void;
   clear: () => void;
 }
@@ -285,7 +265,6 @@ export function SchedulerProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'TOGGLE_TEACHER_GROUPS', subjectCode, teacherId }),
       enableAllSeminars: (subjectCode) => dispatch({ type: 'ENABLE_ALL_SEMINARS', subjectCode }),
       disableAllSeminars: (subjectCode) => dispatch({ type: 'DISABLE_ALL_SEMINARS', subjectCode }),
-      resetAllSeminars: () => dispatch({ type: 'RESET_ALL_SEMINARS' }),
       resetPrefs: () => dispatch({ type: 'RESET_PREFS' }),
       clear: () => dispatch({ type: 'CLEAR' }),
     }),

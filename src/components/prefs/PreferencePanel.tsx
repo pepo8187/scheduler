@@ -55,6 +55,33 @@ export default function PreferencePanel() {
       </div>
 
       <div className="pref-block">
+        <div className="pref-block__label-row">
+          <span className="pref-block__label">Break shape</span>
+          <span className="pref-block__value">
+            {prefs.gapShape > 0.6 ? 'Several short' : prefs.gapShape < 0.4 ? 'One long' : 'Balanced'}
+          </span>
+        </div>
+        <div className="pref-slider">
+          <span className="pref-slider__end">One long break</span>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={prefs.gapShape}
+            onChange={(e) => actions.setPrefs({ gapShape: Number(e.target.value) })}
+            disabled={prefs.gaps === 0}
+          />
+          <span className="pref-slider__end">Several short breaks</span>
+        </div>
+        <p className="pref-block__hint">
+          {prefs.gaps === 0
+            ? 'No effect while dead time is scored at 0% — raise Gaps to use this.'
+            : 'Given the same idle time, should it land in one block or be split into short breathers?'}
+        </p>
+      </div>
+
+      <div className="pref-block">
         <span className="pref-block__label">Day window</span>
         <div className="pref-row">
           <label>

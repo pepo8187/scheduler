@@ -143,14 +143,33 @@ Scores the number of days used plus, on the spread side, the variance of per-day
 
 ### 3. Gaps — dead time between classes
 
-Slider, **Gaps are fine ←→ No dead time**. Penalises idle time between consecutive classes on
+Two sliders, because "how much do I mind dead time?" and "what shape should it take?" are
+independent questions and neither can answer the other.
+
+**Gaps**, *Gaps are fine ←→ No dead time*. Penalises idle time between consecutive classes on
 the same day, but not linearly by length: a short gap is cheap, a couple of hours really
 hurts, and beyond that each extra idle minute matters less — but the cost never falls, it only
 flattens out toward a cap, so no gap is ever scored better than a shorter one and none beats
-having no gap at all (`gapBadness()` in `score.ts`, the Gamma(shape=2) CDF, capped at 120).
-High setting produces back-to-back blocks; low setting tolerates the occasional hole. There's
-no time-of-day exemption (no special "lunch window") — only a gap's length matters, so the
-user can eat whenever a gap happens to fall.
+having no gap at all (`gapBadness()` in `score.ts`, a Weibull CDF capped at 120). High setting
+produces back-to-back blocks; low setting tolerates the occasional hole. At 0 the term
+vanishes and *Break shape* is inert (and disabled in the UI).
+
+**Break shape**, *One long break ←→ Several short breaks*. Bends the same curve via its
+exponent (`gapExponent()`, 0.5 … 2.5) without moving the cap or the 120-minute scale, so
+monotonicity survives at every setting. This is the continuity control: the exponent decides
+whether the curve is steep from the origin (every idle minute counts, so splitting pays the
+entry cost repeatedly and dead time consolidates) or flat near it (short breathers are nearly
+free, so the solver scatters them instead of leaving one hole). Note the slider is a *pure
+scalar* on the Gaps side by contrast — multiplying every gap cost by the same number can never
+change which of two gap arrangements wins, which is exactly why fragmentation needed its own
+control rather than a reinterpretation of Gaps or Compactness (the latter being a week-level
+axis that never looks inside a day).
+
+Because a single gap is capped, consolidating a genuinely long stretch wins at every position
+of the shape slider; the slider governs the sub-saturation range where real schedules sit.
+There's no time-of-day exemption (no special "lunch window") — only a gap's length matters, so
+the user can eat whenever a gap happens to fall. `GapExplainer.tsx` plots the resulting curve
+live against the current prefs and lists worked comparisons, since convexity can't be eyeballed.
 
 ### 4. Day window — earliest start / latest end
 
@@ -162,10 +181,19 @@ unsatisfiable when a lecture is fixed at 08:00.
 
 ### 5. Seminar teacher preference
 
-Not a slider — it is expressed by selection. The sidebar shows teacher chips per subject;
-clicking a teacher's chip keeps only that teacher's groups enabled. This is the direct
-mechanism for "I only want Mr. X's seminars", and it feeds the solver as a narrowed domain
-rather than as a soft weight, so it is guaranteed to be honoured.
+Not a slider — it is expressed by selection. The sidebar shows teacher chips per subject, and
+the click behaviour is asymmetric on purpose (`applyTeacherChipClick` in `teacherFilter.ts`):
+the **first** click out of the unfiltered state keeps only that teacher's groups and drops the
+rest, and **every click after it adds** a teacher to the selection. Narrowing to one teacher is
+then a single click rather than clicking away every teacher you don't want, while
+"Mr. X's and Ms. Y's, nobody else's" stays a two-click build-up. Clicking a fully-selected
+teacher removes them again; if that would leave the subject with no group at all the filter
+clears back to unfiltered, since an empty subject cannot be scheduled. Each subject card
+carries its own **Reset groups** button (disabled while nothing is narrowed) to get back to the
+pristine state — and therefore back to an exclusive first click.
+
+This is the direct mechanism for "I only want Mr. X's seminars", and it feeds the solver as a
+narrowed domain rather than as a soft weight, so it is guaranteed to be honoured.
 
 ### 6. Max classes per day (soft cap)
 
@@ -213,7 +241,8 @@ collapsible card per subject: subject checkbox, code, name. Inside a card:
   *fixed, not chosen*;
 - the **Seminar group** rows — checkbox per group, group number, day/time, teacher; these are
   presented as the things the user actually picks between;
-- **teacher chips** for bulk-selecting groups by teacher.
+- **teacher chips** for bulk-selecting groups by teacher, sharing a row with that subject's own
+  **Reset groups** button (the reset is per subject — there is no global one).
 
 `<nezname>` items sit in a tray at the bottom, listed but never scheduled.
 
@@ -315,6 +344,7 @@ scheduler/
       score.ts            # objective: one term per preference + breakdown
       solver.ts           # exhaustive DFS w/ MRV + forward checking, top-K results
       presets.ts          # the four preference bundles
+      teacherFilter.ts    # teacher-chip rule: first click exclusive, the rest additive
       format.ts           # minutes<->"HH:MM", day labels
       __tests__/          # vitest: parser, overlap, analysis, lunch, score, solver (+ fixture)
     state/

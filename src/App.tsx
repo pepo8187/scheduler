@@ -45,11 +45,6 @@ export default function App() {
         <aside className="app__sidebar panel">
           <div className="panel__header">
             <h2 className="panel__title">Subjects</h2>
-            {timetable && (
-              <button type="button" className="button button--ghost" onClick={actions.resetAllSeminars}>
-                Reset seminars
-              </button>
-            )}
           </div>
           <FileDrop />
           <SubjectList />

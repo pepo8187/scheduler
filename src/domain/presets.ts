@@ -4,6 +4,7 @@ export const DEFAULT_PREFS: Prefs = {
   daysOff: [],
   compactness: 0,
   gaps: 0.3,
+  gapShape: 0.5, // neutral bend: consolidate dead time, but without treating every short break as a hole
   dayWindow: { start: 480, end: 1200 }, // matches the grid's own 08:00-20:00 bounds: no nudge by default
   maxClassesPerDay: null,
   lunch: { enabled: false, default: { start: 600, end: 660 }, overrides: {} }, // 10:00-11:00, opt-in
@@ -21,11 +22,15 @@ export const PRESETS: Preset[] = [
   {
     id: 'cramIt',
     label: 'Cram it in',
-    apply: (prefs) => ({ ...prefs, compactness: 1, gaps: 0.9 }),
+    // Cram wants a tight day as well as a tight week: pull the bend all the way toward
+    // consolidating dead time into one break rather than scattering short ones.
+    apply: (prefs) => ({ ...prefs, compactness: 1, gaps: 0.9, gapShape: 0.15 }),
   },
   {
     id: 'spreadEvenly',
     label: 'Spread evenly',
+    // Spreading across the week says nothing about the shape of a day's dead time, so
+    // gapShape is deliberately left where the user put it.
     apply: (prefs) => ({ ...prefs, compactness: -1, gaps: 0.2 }),
   },
   {
