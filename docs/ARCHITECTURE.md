@@ -347,6 +347,7 @@ src/
     reclassify.ts     asLecture(): treat a seminar group as lecture-like
     analysis.ts       pre-flight: day-off blockers/drops/dead subjects, lunch notes, clashes
     score.ts          the objective, per-term breakdown, DEFAULT_TUNING, two-week averaging
+    ledger.ts         the same objective, maintained per day across the search (§ Search)
     shape.ts          week-shape identity: dayLoadKey, blockShapeKey, the <hodiny> time snap
     switching.ts      what swapping one group would cost; the ghost tiers; what pins cost
     variants.ts       the other labellings a deduped rung stands for, and what differs
@@ -556,20 +557,46 @@ Exhaustive depth-first over the variables, with:
   skipped outright.
 - **Bounded top-K** with an early-exit guard (`insertRanked`), so a candidate that provably
   can't make the cut is never pushed, sorted or truncated.
+- **Incremental scoring** ([`ledger.ts`](../src/domain/ledger.ts)). The objective is a sum over
+  days — `sparseDay`, `gaps` and `maxPerDay` are per-day, `dayWindow` is per-slot, and only
+  `compactness` reads the week whole, as a vector of per-day loads. So the week is *maintained*
+  rather than rebuilt: descending a level dirties only the days the chosen group meets on (one,
+  for all 142 groups in the podzim2022 export), and backtracking restores what was saved on the
+  way down. A leaf then reads a number the descent already accumulated instead of resolving the
+  assignment and re-deriving every term.
+- **Precomputed candidate collisions.** `buildVariables` hoists collisions against *fixed*
+  events out of the DFS; `buildOverlapMatrix` does the same for value-against-value, which the
+  search would otherwise rediscover with `eventsOverlap` at every node.
 - **Deterministic ordering** (`makeCompareSolutions`): score, then earliest finish, then the
   seed's own jitter, with `localeCompare` as an absolute backstop so the ordering stays total
-  under a hash collision.
+  under a hash collision. Search-time totals are rounded onto a millionth-of-a-point grid
+  (`COMPARE_GRID`) first, so the ledger's per-day arithmetic can't rank two genuinely
+  equal-cost weeks on a difference of 1e-13 and quietly override that jitter.
+
+The ledger ranks; it never reports. Its totals carry no term breakdown and group the same
+additions differently, so `solve` puts the pool's survivors back through `scoreResolved` before
+returning — forty of them, well under a millisecond. Every number the UI shows therefore still
+comes from the one scorer, and `ledger.test.ts` holds the two implementations to the same
+objective.
 
 ### Scale
 
 | Selection | Raw combinations | Result |
 | --- | --- | --- |
-| Bundled podzim23 export | 23 250 | proven optimal, milliseconds |
-| Heavy real semester (5 subjects, 15–45 groups each) | ~10⁷ before collapsing | proven optimal, well under a second |
-| `IB015+PB154+VB035` (podzim2022, fortnightly) | 12 180 collision-free | proven optimal, ~83 ms |
+| Bundled podzim23 export | 23 250 | proven optimal, ~20 ms |
+| Bundled podzim2022 export, everything on (8 subjects, 142 groups) | ~6·10⁶ before collapsing | proven optimal, ~0.65 s (895 k nodes) |
+| Synthetic worst case (5 subjects, 15–35 groups, no structure) | ~6·10⁶ before collapsing | proven optimal, ~1.2 s |
+| `IB015+PB154+VB035` (podzim2022, fortnightly) | 12 180 collision-free | proven optimal, ~10 ms |
 
-Branch-and-bound plus group collapsing typically cut nodes actually visited by several orders
-of magnitude. The **node budget** (2 M) guards pathological inputs with no exploitable
+The first-year semester is the heavy one and the one that matters: it carries the most subjects,
+the most parallel groups, and the students least able to untangle the result by hand. Everything
+after it is smaller.
+
+Branch-and-bound plus group collapsing typically cut nodes actually visited by several orders of
+magnitude — but only against *collisions*: on podzim2022 every complete assignment but three is
+collision-free, so the bound prunes the clashing part of the tree and nothing else, and the
+search still reaches ~850 000 leaves for ten answers. That is why the leaf, not the pruning, is
+what the incremental ledger above is for. The **node budget** (2 M) guards pathological inputs with no exploitable
 structure: if exceeded, the solver falls back to randomised-restart hill climbing (seeded, so
 still reproducible; ~2 % restart probability) and the result is labelled **"best found — not
 proven optimal"** via `provenOptimal: false` rather than claiming something it can't prove.
@@ -663,14 +690,21 @@ The same numbers price the user's pins. `pinRelief` asks whether a pinned subjec
 hold something better right now — a true **lower bound** on what un-pinning would recover, since
 freeing the subject also lets everything else move, hence the "at least" in the UI.
 
-The exact figure needs a **second full search**, and that search is not cheaper than the first:
-measured side by side on podzim22, a `topK: 1` baseline came back at 14.8 s against the real
-solve's 14.6 s, because the bound is collision-dominated and the comfort terms prune nothing
-extra. (Both figures are from vitest on a shared CI container — the ratio is the point, not the
-absolute numbers; the same solve is ~3 s in a browser on a laptop.) So showing the exact cost
-roughly **doubles every solve while any pin is set**. At laptop speed that is 3 s becoming 6 s,
-which is a real trade rather than an obvious one — worth revisiting if the search gets faster,
-or if the exact number turns out to matter more than the wait.
+The exact figure needs a **second full search**. That used to settle the question: measured side
+by side on podzim22, a `topK: 1` baseline came back at 14.8 s against the real solve's 14.6 s,
+because the bound is collision-dominated and the comfort terms prune nothing extra — so showing
+the exact cost roughly **doubled every solve while any pin is set**, 3 s becoming 6 s at laptop
+speed.
+
+**That argument has expired.** Since the incremental ledger both searches are an order of
+magnitude cheaper, and the baseline is now the *cheaper* of the two: a `topK: 1` pool is tight
+enough that the leaf's early-exit turns most candidates away before they are built. Re-measured
+on podzim2022 with two groups pinned, the baseline is ~7 ms on top of a ~29 ms solve — a quarter
+more, not double. The floor is still what the UI shows, but now because it costs nothing (every
+number it needs is already a `switchCosts` entry for the ghost strips) rather than because the
+exact answer is unaffordable. Switching to the exact figure is a live option, and the thing to
+weigh is no longer the wait but whether "at least N points" or an exact N serves the student
+better.
 
 ---
 

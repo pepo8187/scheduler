@@ -432,6 +432,60 @@ describe('solve — node budget fallback', () => {
     expect(result.solutions.length).toBeGreaterThan(0);
     expect(result.diagnostics.fallbackIterations).toBeGreaterThan(0);
   });
+
+  it('unwinds the ledger correctly when the budget runs out mid-descent', () => {
+    // A budget small enough to abandon the search partway down, so the DFS returns through
+    // levels that have already placed a group into the ledger. If an abandoned descent left
+    // the ledger dirty, the fallback's solutions would come back mis-scored.
+    const WEEK: Slot['day'][] = ['Po', 'Út', 'St', 'Čt', 'Pá'];
+    const subjects: Subject[] = [];
+    for (let i = 0; i < 4; i++) {
+      const code = `S${i}`;
+      const seminars = Array.from({ length: 6 }, (_, g) =>
+        event(`${code}/${g}`, code, 'seminar', [slot(WEEK[(i + g) % 5]!, 480 + g * 60, 530 + g * 60)], String(g)),
+      );
+      subjects.push(subject(code, [event(code, code, 'lecture', [slot('Po', 480 + i * 100, 550 + i * 100)])], seminars));
+    }
+    const timetable = timetableOf(subjects);
+    const selection = buildFullSelection(timetable);
+
+    const result = solve(timetable, selection, DEFAULT_PREFS, { nodeBudget: 50, random: () => 0.5 });
+
+    expect(result.provenOptimal).toBe(false);
+    expect(result.solutions.length).toBeGreaterThan(0);
+    for (const solution of result.solutions) {
+      expect(solution.score.total).toBe(computeScore(timetable, selection, DEFAULT_PREFS, solution.assignment).total);
+    }
+  });
+});
+
+describe('solve — every returned solution carries its own real score', () => {
+  // The search ranks candidates on `domain/ledger.ts`, which is a filter and not the scorer, so
+  // this is the invariant that keeps that an implementation detail: whatever comes back has been
+  // re-derived through `scoreResolved` and agrees with scoring the assignment from scratch.
+  const profiles: [string, Prefs][] = [
+    ['defaults', DEFAULT_PREFS],
+    ['cram', { ...DEFAULT_PREFS, compactness: 1, gaps: 0.9, gapShape: 0.15 }],
+    ['spread', { ...DEFAULT_PREFS, compactness: -1, gaps: 0.2 }],
+    ['late start, capped', { ...DEFAULT_PREFS, dayWindow: { start: 600, end: 1020 }, maxClassesPerDay: 2 }],
+    ['Friday off', { ...DEFAULT_PREFS, daysOff: ['Pá'] }],
+  ];
+
+  for (const [name, prefs] of profiles) {
+    it(`agrees with computeScore on the bundled export (${name})`, () => {
+      const timetable = parseTimetable(readSampleXml());
+      const selection = buildFullSelection(timetable);
+
+      const result = solve(timetable, selection, prefs);
+
+      expect(result.solutions.length).toBeGreaterThan(0);
+      for (const solution of result.solutions) {
+        const scored = computeScore(timetable, selection, prefs, solution.assignment);
+        expect(solution.score.total).toBe(scored.total);
+        expect(solution.score.terms).toEqual(scored.terms);
+      }
+    });
+  }
 });
 
 describe('solve — diagnostics', () => {
@@ -561,8 +615,10 @@ describe('solve — performance regression guard', () => {
   it('stays proven-optimal and fast on a heavy semester (5 subjects x ~15-45 wide-spread groups)', { timeout: 60_000 }, () => {
     // Mirrors the shape that used to blow the node budget: several subjects each with dozens
     // of seminar groups scattered across the week, no exploitable structure to shrink the
-    // search other than branch-and-bound. This used to take tens of seconds; should now be
-    // well under a second thanks to branch-and-bound + hoisted forward checking.
+    // search other than branch-and-bound. This used to take tens of seconds; branch-and-bound
+    // plus hoisted forward checking brought it to a few, and scoring each leaf from the
+    // incremental ledger (`domain/ledger.ts`) rather than rebuilding the week took roughly
+    // another factor of four off that.
     const days: Slot['day'][] = ['Po', 'Út', 'St', 'Čt', 'Pá'];
     const subjects: Subject[] = [];
     const groupCounts = [15, 18, 23, 28, 35];
@@ -588,8 +644,9 @@ describe('solve — performance regression guard', () => {
     // search exponential again, so it has to clear the slowest CI box by a wide margin. The
     // headroom was widened when alternating-week parity entered `slotSignature`, which stops
     // odd/even twins collapsing into one representative and so roughly doubles the domains on
-    // a fortnightly export. Wall-clock on a shared runner varies several-fold; treat a real
+    // a fortnightly export, then narrowed again once the ledger took this shape to ~1.2 s on a
+    // developer machine. Wall-clock on a shared runner varies several-fold; treat a real
     // regression as a change in *order*, not a creep in this number.
-    expect(elapsedMs).toBeLessThan(30_000);
+    expect(elapsedMs).toBeLessThan(10_000);
   });
 });

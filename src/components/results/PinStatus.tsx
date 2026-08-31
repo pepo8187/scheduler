@@ -13,10 +13,11 @@ interface PinStatusProps {
  *
  * It says **"at least"** on purpose. The figure is the best single swap available inside that
  * one subject, which is a floor on what un-pinning would recover: freeing the subject also lets
- * every other subject move around it. The exact answer needs a whole second search, and on the
- * heaviest real export that doubles a fifteen-second solve for one line of text — measured,
- * see `domain/switching.ts`. A true lower bound stated as one beats a precise number nobody
- * waits for.
+ * every other subject move around it. The exact answer needs a whole second search, which used
+ * to double a fifteen-second solve for one line of text; since the search got an order of
+ * magnitude faster that is a much smaller price, and `domain/switching.ts` says what it now
+ * costs. The floor stays for the moment because it is free — every number it needs is already
+ * computed for the ghost strips.
  */
 export default function PinStatus({ relief }: PinStatusProps) {
   if (relief.length === 0) return null;
