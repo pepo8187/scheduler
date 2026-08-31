@@ -802,6 +802,19 @@
   font-weight: 650;
 }
 
+/* The days this rung uses — the shape the strip is deduped by, so it's what differs between
+   neighbouring rungs. Tabular figures keep the column from jittering as day sets change. */
+.alternatives-bar__shape {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.alternatives-bar__item--active .alternatives-bar__shape {
+  color: inherit;
+}
+
 .alternatives-bar__note {
   font-size: var(--fs-xs);
   color: var(--warn);
