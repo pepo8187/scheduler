@@ -1,6 +1,6 @@
-import { DAY_ORDER } from './format';
 import { dayAffinity, unitFrom, type DayAffinity } from './random';
-import type { Assignment, CourseEvent, Day, Prefs, Solution } from './types';
+import { dayLoad, dayLoadKey } from './shape';
+import type { Assignment, CourseEvent, Prefs, Solution } from './types';
 
 /**
  * Variation across a cohort, priced honestly.
@@ -38,16 +38,12 @@ export function varietyTolerance(prefs: Prefs): number {
   return clamp(prefs.variety, 0, 1) * clamp(prefs.tuning.varietyToleranceMax, 0, Number.MAX_SAFE_INTEGER);
 }
 
-/** Minutes of class per day. */
-export function dayLoad(events: CourseEvent[]): Map<Day, number> {
-  const load = new Map<Day, number>();
-  for (const event of events) {
-    for (const slot of event.slots) {
-      load.set(slot.day, (load.get(slot.day) ?? 0) + (slot.end - slot.start));
-    }
-  }
-  return load;
-}
+/**
+ * Week-shape identity now lives in `domain/shape.ts`, which answers the same question at two
+ * altitudes. Re-exported under the old names so nothing that only needs the coarse one has to
+ * care about the split.
+ */
+export { dayLoad, dayLoadKey as weekShapeKey } from './shape';
 
 /**
  * 0 when every class minute lands on this seed's best weekday, 1 when every minute lands on its
@@ -64,14 +60,6 @@ export function affinityMismatch(events: CourseEvent[], affinity: DayAffinity): 
   }
   if (minutes === 0) return 0; // an empty week has nothing to lean either way
   return 1 - weighted / minutes;
-}
-
-/** Stable identity for a schedule's *shape*: which days it uses and how loaded each one is. */
-export function weekShapeKey(events: CourseEvent[]): string {
-  const load = dayLoad(events);
-  return DAY_ORDER.filter((day) => load.has(day))
-    .map((day) => `${day}:${load.get(day)}`)
-    .join(',');
 }
 
 /** Stable identity for an assignment, used as the coordinate for per-seed jitter. */
@@ -156,37 +144,61 @@ export function pickVariety(solutions: Solution[], prefs: Prefs): VarietyPick {
 }
 
 /**
+ * A schedule's identity for de-duplication purposes. See `domain/shape.ts` for the two the
+ * strip uses and why neither of them looks at which subject sits in which block.
+ */
+export type ShapeKey = (solution: Solution) => string;
+
+/**
  * Trims a wide candidate pool down to what the alternatives strip shows, preferring schedules
  * that differ in *shape*.
  *
  * Without this, a widened pool is mostly wasted: the top forty candidates for a real timetable
- * are routinely forty permutations of the same Monday-heavy week, differing only in which
- * interchangeable group filled a slot. Keeping the best-scoring representative of each distinct
- * week shape first — then backfilling with the next best whatever their shape — gives the band
- * something to actually choose between, and makes the strip more useful to read besides.
+ * are routinely forty spellings of the same Monday-heavy week, differing only in which
+ * interchangeable group filled a slot or which subject took which of two seminar hours.
+ *
+ * **Coarse to fine, one pass per key.** A single key cannot do this job. `dayLoadKey` alone is
+ * too coarse — it merges a Monday-morning week with a Monday-afternoon one — and on a real
+ * top ten it yields only three to six distinct values, so it would leave rungs empty.
+ * `blockShapeKey` alone is too fine to change anything: nine or ten distinct values out of ten,
+ * i.e. today's strip. Running them in order gives the strip a structure instead: the genuinely
+ * different weeks first, then finer variations, then whatever is left. The list is re-sorted by
+ * `compare` at the end, so the strip stays a truthful ladder in real score order.
+ *
+ * **The representative of a class is its best member, not a random one.** Sorting the pool by
+ * `compare` up front gives that for free, since `compare` is score-first. It matters once times
+ * are canonicalised: 15:40 and 15:50 land in the same `blockShapeKey` but do *not* score the
+ * same, so picking arbitrarily within a class could hand a student a strictly worse week with
+ * the better one invisible inside it.
  */
 export function selectDiverse(
   pool: Solution[],
   limit: number,
   compare: (a: Solution, b: Solution) => number,
+  keys: ShapeKey[] = [(solution) => dayLoadKey(solution.events)],
 ): Solution[] {
+  const ranked = [...pool].sort(compare);
   const chosen: Solution[] = [];
-  const leftovers: Solution[] = [];
-  const seen = new Set<string>();
+  const taken = new Set<number>();
 
-  for (const solution of pool) {
-    const shape = weekShapeKey(solution.events);
-    if (seen.has(shape) || chosen.length >= limit) {
-      leftovers.push(solution);
-      continue;
+  for (const key of keys) {
+    // Whatever earlier passes already put on the strip counts as seen for this key too,
+    // otherwise pass two would re-offer a finer view of a week pass one already showed.
+    const seen = new Set(chosen.map(key));
+    for (let i = 0; i < ranked.length && chosen.length < limit; i++) {
+      if (taken.has(i)) continue;
+      const shape = key(ranked[i]!);
+      if (seen.has(shape)) continue;
+      seen.add(shape);
+      taken.add(i);
+      chosen.push(ranked[i]!);
     }
-    seen.add(shape);
-    chosen.push(solution);
+    if (chosen.length >= limit) break;
   }
 
-  for (const solution of leftovers) {
-    if (chosen.length >= limit) break;
-    chosen.push(solution);
+  for (let i = 0; i < ranked.length && chosen.length < limit; i++) {
+    if (taken.has(i)) continue;
+    chosen.push(ranked[i]!);
   }
 
   return chosen.sort(compare);
