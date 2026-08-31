@@ -1,9 +1,12 @@
 import { useCallback, useRef, useState, type DragEvent } from 'react';
 import { useScheduler } from '../state/schedulerStore';
 
-// Resolved against the deployment base rather than the domain root, so the sample still
-// loads when the app is served from a subdirectory (see docs/DEPLOY.md).
-const SAMPLE_URL = `${import.meta.env.BASE_URL}sample-timetable.xml`;
+// Resolved against the deployment base rather than the domain root, so the examples still
+// load when the app is served from a subdirectory (see docs/DEPLOY.md).
+const EXAMPLES = [
+  { label: 'Load podzim23', fileName: 'podzim23-timetable.xml' },
+  { label: 'Load podzim22', fileName: 'podzim22-timetable.xml' },
+] as const;
 
 export default function FileDrop() {
   const { timetable, fileName, actions } = useScheduler();
@@ -24,16 +27,19 @@ export default function FileDrop() {
     [actions],
   );
 
-  const loadSample = useCallback(async () => {
-    try {
-      const response = await fetch(SAMPLE_URL);
-      const text = await response.text();
-      actions.loadTimetable(text, 'sample-timetable.xml');
-      setError(null);
-    } catch {
-      setError('Could not load the bundled sample.');
-    }
-  }, [actions]);
+  const loadExample = useCallback(
+    async (fileName: string) => {
+      try {
+        const response = await fetch(`${import.meta.env.BASE_URL}${fileName}`);
+        const text = await response.text();
+        actions.loadTimetable(text, fileName);
+        setError(null);
+      } catch {
+        setError(`Could not load the bundled example ${fileName}.`);
+      }
+    },
+    [actions],
+  );
 
   const onDrop = useCallback(
     (e: DragEvent<HTMLDivElement>) => {
@@ -76,9 +82,18 @@ export default function FileDrop() {
         <p className="file-drop__hint">Drop a MUNI IS timetable export here, or click to choose a file</p>
       </div>
 
-      <button type="button" className="button button--secondary" onClick={() => void loadSample()}>
-        Load sample
-      </button>
+      <div className="file-drop__examples">
+        {EXAMPLES.map(({ label, fileName }) => (
+          <button
+            key={fileName}
+            type="button"
+            className="button button--secondary"
+            onClick={() => void loadExample(fileName)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
       {error && <p className="file-drop__error">{error}</p>}
 

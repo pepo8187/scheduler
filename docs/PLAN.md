@@ -90,7 +90,7 @@ Three properties of this data drive the design and make good test fixtures:
 3. This export happens not to include a lecture-lecture collision or a seminar-only
    (lecture-less) subject — real full-catalog exports don't always exercise every shape the
    format allows. Both are still fully supported by the parser/solver/scoring and covered by
-   synthetic fixtures in the unit tests; they're just not demonstrated live by "Load sample"
+   synthetic fixtures in the unit tests; they're just not demonstrated live by "Load podzim23"
    with this particular file.
 
 ## Decisions already made with the user
@@ -334,7 +334,8 @@ reopening the app restores the exact working state.
 
 Three panes.
 
-**Left sidebar (~320 px)** — file drop zone and a *Load sample* button at the top, then one
+**Left sidebar (~320 px)** — file drop zone and *Load podzim23* / *Load podzim22* buttons at
+the top, then one
 collapsible card per subject: subject checkbox, code, name. Inside a card:
 
 - a **Lecture** row — checkbox + ★ priority toggle + day/time/teacher, visually marked as
@@ -431,7 +432,8 @@ analyzer, and solver are unit-testable headlessly.
 ```
 scheduler/
   package.json  vite.config.ts  tsconfig.json  index.html  README.md  .gitignore
-  public/sample-timetable.xml          # the uploaded file, bundled as "Load sample"
+  public/podzim23-timetable.xml        # bundled as "Load podzim23"
+  public/podzim22-timetable.xml        # bundled as "Load podzim22"
   src/
     main.tsx  App.tsx
     styles/theme.css  styles/app.css
@@ -644,3 +646,13 @@ original sample's subjects (`LJ601`, `MV008`, `MA012`, `MA010`, `IA159`, `IA012`
 because that is genuinely what was verified at the time, not because that data is still
 bundled. For current facts and figures (subject list, test count, combinatorics), see the
 `Context` section above and the README.
+
+## Second example added (post-launch)
+
+`public/sample-timetable.xml` (the podzim 2023 export described above) was renamed to
+`public/podzim23-timetable.xml`, and a second real MUNI IS export — podzim 2022 — was added
+alongside it as `public/podzim22-timetable.xml`. The single "Load sample" button in
+`FileDrop.tsx` was replaced with two buttons, *Load podzim23* and *Load podzim22*, each
+fetching its own bundled file. `src/domain/__tests__/sample.ts` (the vitest fixture helper)
+was repointed at `public/podzim23-timetable.xml` so the existing fixture-dependent tests keep
+exercising the same podzim23 data as before; podzim22 is not (yet) used as a test fixture.

@@ -280,6 +280,15 @@
   color: var(--text-muted);
 }
 
+.file-drop__examples {
+  display: flex;
+  gap: var(--gap-sm);
+}
+
+.file-drop__examples .button {
+  flex: 1;
+}
+
 .file-drop__error {
   margin: 0;
   font-size: var(--fs-xs);
