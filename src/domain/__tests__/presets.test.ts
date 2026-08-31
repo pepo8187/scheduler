@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyPreset, DEFAULT_PREFS, PRESETS } from '../presets';
+import { DEFAULT_TUNING } from '../score';
 
 describe('DEFAULT_PREFS', () => {
   it('has no day off, a neutral compactness, and a day window matching the grid bounds', () => {
@@ -12,6 +13,25 @@ describe('DEFAULT_PREFS', () => {
   it('has lunch blocking off by default, with no per-day overrides', () => {
     expect(DEFAULT_PREFS.lunch.enabled).toBe(false);
     expect(DEFAULT_PREFS.lunch.overrides).toEqual({});
+  });
+
+  it('carries a blank seed, so no two students inherit the same "random" week', () => {
+    // A seed baked in here would be shared by everyone who never touched the control — which
+    // is the exact bug the variation feature exists to fix. The store mints a real one.
+    expect(DEFAULT_PREFS.seed).toBe('');
+  });
+
+  it('has Variety off, because unlike the free variation it costs the student points', () => {
+    expect(DEFAULT_PREFS.variety).toBe(0);
+  });
+});
+
+describe('the variety budget', () => {
+  it('can never outweigh a dropped lecture, let alone a collision', () => {
+    // The ordering the whole objective rests on: variation is a comfort-scale trade and must
+    // never be able to buy its way past a hard outcome.
+    expect(DEFAULT_TUNING.varietyToleranceMax).toBeLessThan(DEFAULT_TUNING.droppedLecturePerEvent);
+    expect(DEFAULT_TUNING.droppedLecturePerEvent).toBeLessThan(DEFAULT_TUNING.seminarCollisionPerPair);
   });
 });
 

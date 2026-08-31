@@ -745,6 +745,140 @@
   color: var(--warn);
 }
 
+/* The rung this student's seed put forward. Marked with a dot as well as a border so the
+   distinction never rests on colour alone. */
+.alternatives-bar__item--pick {
+  border-color: var(--seminar-accent);
+}
+
+.alternatives-bar__rank {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.alternatives-bar__pick-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: var(--r-pill);
+  background: var(--seminar-accent);
+}
+
+/* --- Variation: seed row, status line, explainer bars --- */
+
+.seed-row {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+}
+
+.seed-row__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  letter-spacing: 0.06em;
+}
+
+.variety-status {
+  margin-bottom: var(--gap-md);
+}
+
+.variety-status__line {
+  margin: 0 0 var(--gap-xs);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  max-width: 68ch;
+}
+
+.variety-status__line--muted {
+  color: var(--text-muted);
+}
+
+.variety-status__badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: var(--r-pill);
+  background: var(--primary-container);
+  color: var(--text);
+  font-size: var(--fs-xs);
+  font-weight: 650;
+}
+
+.vbars {
+  margin: 0 0 var(--gap-md);
+  padding: 0;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.vbars__caption {
+  margin-bottom: var(--gap-sm);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.vbars__row {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+}
+
+.vbars__label {
+  flex: 0 0 8.5rem;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vbars__track {
+  flex: 1 1 auto;
+  height: 14px;
+  background: var(--surface-sunken);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+
+.vbars__fill {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  background: var(--primary);
+  border-radius: var(--r-sm);
+}
+
+/* The group the old lowest-number rule sent the entire year to. Outlined rather than merely
+   recoloured, so it reads without relying on hue. */
+.vbars__fill--was {
+  background: var(--seminar-accent);
+  box-shadow: inset 0 0 0 2px var(--surface);
+}
+
+.vbars__value {
+  flex: 0 0 2.5rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  text-align: right;
+}
+
+.variety-limits {
+  margin: 0 0 var(--gap-md);
+  padding-left: 1.1rem;
+  max-width: 68ch;
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.variety-limits li {
+  margin-bottom: var(--gap-sm);
+}
+
 .score-breakdown {
   margin-bottom: var(--gap-md);
 }

@@ -165,6 +165,20 @@ const GROUPS: Group[] = [
       },
     ],
   },
+  {
+    title: 'Variation',
+    blurb: 'How much the Variety slider is allowed to spend on a week that differs from your year\u2019s.',
+    fields: [
+      {
+        key: 'varietyToleranceMax',
+        label: 'Variety budget',
+        hint: 'Points the slider may give up at its maximum. Kept far below a dropped lecture, and further still below a collision, so variation can never buy either one.',
+        min: 0,
+        max: 1_000,
+        step: 10,
+      },
+    ],
+  },
 ];
 
 function isDefault(tuning: Tuning): boolean {

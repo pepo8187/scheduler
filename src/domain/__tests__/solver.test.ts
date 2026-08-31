@@ -193,6 +193,135 @@ describe('solve — group collapsing', () => {
   });
 });
 
+describe('solve — variation across a cohort', () => {
+  /** One subject, `count` groups all meeting at the same hour: interchangeable by construction. */
+  function parallelGroups(count: number): { timetable: Timetable; selection: ReturnType<typeof buildFullSelection> } {
+    const lecture = event('AA', 'AA', 'lecture', [slot('Po', 480, 570)]);
+    const groups = Array.from({ length: count }, (_, i) =>
+      event(`BB/${String(i).padStart(2, '0')}`, 'BB', 'seminar', [slot('Út', 480, 570)], String(i)),
+    );
+    const timetable = timetableOf([subject('AA', [lecture], []), subject('BB', [], groups)]);
+    return { timetable, selection: buildFullSelection(timetable) };
+  }
+
+  it('hands different students different groups among interchangeable ones', () => {
+    // The headline bug: 400 people with the same subjects used to receive group 01, every time.
+    const { timetable, selection } = parallelGroups(8);
+    const chosen = new Set<string | null | undefined>();
+    for (const seed of ['AAAA-2222', 'BBBB-3333', 'CCCC-4444', 'DDDD-5555', 'EEEE-6666', 'FFFF-7777']) {
+      const result = solve(timetable, selection, { ...DEFAULT_PREFS, seed });
+      chosen.add(result.solutions[0]?.assignment.seminarChoice.BB);
+    }
+    expect(chosen.size).toBeGreaterThan(1);
+  });
+
+  it('gives one student the same group every time, so a slider nudge never reshuffles the week', () => {
+    const { timetable, selection } = parallelGroups(8);
+    const prefs: Prefs = { ...DEFAULT_PREFS, seed: '7QF3-2K91' };
+    const first = solve(timetable, selection, prefs).solutions[0]?.assignment.seminarChoice.BB;
+    expect(first).toBeTruthy();
+    for (let i = 0; i < 5; i++) {
+      expect(solve(timetable, selection, prefs).solutions[0]?.assignment.seminarChoice.BB).toBe(first);
+    }
+  });
+
+  it('lets two friends land in the same group on purpose by sharing a seed', () => {
+    const { timetable, selection } = parallelGroups(12);
+    const mine = solve(timetable, selection, { ...DEFAULT_PREFS, seed: '7QF3-2K91' });
+    const theirs = solve(timetable, selection, { ...DEFAULT_PREFS, seed: '7qf3-2k91'.toUpperCase() });
+    expect(theirs.solutions[0]?.assignment.seminarChoice.BB).toBe(mine.solutions[0]?.assignment.seminarChoice.BB);
+  });
+
+  it('reports the interchangeable groups it collapsed, so the UI can show the headroom', () => {
+    const { timetable, selection } = parallelGroups(8);
+    const result = solve(timetable, selection, { ...DEFAULT_PREFS, seed: '7QF3-2K91' });
+
+    expect(result.interchangeable).toHaveLength(1);
+    const group = result.interchangeable[0]!;
+    expect(group.subjectCode).toBe('BB');
+    expect(group.memberIds).toHaveLength(8);
+    expect(group.representativeId).toBe(result.solutions[0]?.assignment.seminarChoice.BB);
+  });
+
+  it('reports no headroom when every group genuinely meets at a different time', () => {
+    const groups = (['Po', 'Út', 'St', 'Čt'] as Slot['day'][]).map((day, i) =>
+      event(`BB/0${i}`, 'BB', 'seminar', [slot(day, 480, 570)], String(i)),
+    );
+    const timetable = timetableOf([subject('BB', [], groups)]);
+    const result = solve(timetable, buildFullSelection(timetable), { ...DEFAULT_PREFS, seed: '7QF3-2K91' });
+    expect(result.interchangeable).toEqual([]);
+  });
+
+  it('varies the choice without ever costing a point — the schedules score identically', () => {
+    const { timetable, selection } = parallelGroups(8);
+    const totals = new Set<number>();
+    for (const seed of ['AAAA-2222', 'BBBB-3333', 'CCCC-4444', 'DDDD-5555']) {
+      totals.add(solve(timetable, selection, { ...DEFAULT_PREFS, seed }).solutions[0]!.score.total);
+    }
+    expect(totals.size).toBe(1);
+  });
+
+  it('never lets the Variety slider buy a collision or a dropped lecture', () => {
+    const lecture = event('AA', 'AA', 'lecture', [slot('Po', 480, 570)]);
+    const colliding = event('BB/01', 'BB', 'seminar', [slot('Po', 480, 570)], '01');
+    const clean = event('BB/02', 'BB', 'seminar', [slot('St', 480, 570)], '02');
+    const timetable = timetableOf([subject('AA', [lecture], []), subject('BB', [], [colliding, clean])]);
+    const selection = buildFullSelection(timetable);
+
+    for (const seed of ['AAAA-2222', 'BBBB-3333', 'CCCC-4444', 'DDDD-5555', 'EEEE-6666']) {
+      const result = solve(timetable, selection, { ...DEFAULT_PREFS, seed, variety: 1 });
+      const picked = result.solutions[result.variety.index]!;
+      expect(picked.assignment.seminarChoice.BB).toBe('BB/02');
+      expect(picked.overlaps.filter((o) => o.kind === 'seminar')).toHaveLength(0);
+    }
+  });
+
+  it('keeps the alternatives strip a truthful ladder: sorted by real score, pick merely marked', () => {
+    const { timetable, selection } = parallelGroups(4);
+    const result = solve(timetable, selection, { ...DEFAULT_PREFS, seed: '7QF3-2K91', variety: 1 });
+
+    const totals = result.solutions.map((s) => s.score.total);
+    expect([...totals].sort((a, b) => a - b)).toEqual(totals);
+    expect(result.variety.index).toBeGreaterThanOrEqual(0);
+    expect(result.variety.index).toBeLessThan(Math.max(1, result.solutions.length));
+    // The price of the pick is exactly the gap to the top of that ladder — never a fudged score.
+    expect(result.variety.cost).toBe(result.solutions[result.variety.index]!.score.total - totals[0]!);
+  });
+
+  it('stays on the strict optimum while the slider is off', () => {
+    const spread = (['Po', 'Út', 'St', 'Čt', 'Pá'] as Slot['day'][]).map((day, i) =>
+      event(`BB/0${i}`, 'BB', 'seminar', [slot(day, 480 + i * 30, 570 + i * 30)], String(i)),
+    );
+    const timetable = timetableOf([subject('BB', [], spread)]);
+    const selection = buildFullSelection(timetable);
+
+    for (const seed of ['AAAA-2222', 'BBBB-3333', 'CCCC-4444']) {
+      const result = solve(timetable, selection, { ...DEFAULT_PREFS, seed });
+      expect(result.variety.index).toBe(0);
+      expect(result.variety.cost).toBe(0);
+    }
+  });
+
+  it('spreads a cohort off the one best day once Variety is on', () => {
+    // Five equally-good single-seminar weeks, one per weekday. With the slider off every
+    // student gets the same one; with it on, the cohort fans out across the week.
+    const spread = (['Po', 'Út', 'St', 'Čt', 'Pá'] as Slot['day'][]).map((day, i) =>
+      event(`BB/0${i}`, 'BB', 'seminar', [slot(day, 480, 570)], String(i)),
+    );
+    const timetable = timetableOf([subject('BB', [], spread)]);
+    const selection = buildFullSelection(timetable);
+    const seeds = ['AAAA-2222', 'BBBB-3333', 'CCCC-4444', 'DDDD-5555', 'EEEE-6666', 'FFFF-7777', 'GGGG-8888'];
+
+    const days = new Set(
+      seeds.map((seed) => {
+        const result = solve(timetable, selection, { ...DEFAULT_PREFS, seed, variety: 1 });
+        return result.solutions[result.variety.index]!.events[0]!.slots[0]!.day;
+      }),
+    );
+    expect(days.size).toBeGreaterThan(1);
+  });
+});
+
 describe('solve — node budget fallback', () => {
   it('labels the result not-proven-optimal once the budget is exceeded, and still returns solutions', () => {
     const lecture = event('AA', 'AA', 'lecture', [slot('Po', 480, 570)]);
