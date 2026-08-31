@@ -59,6 +59,7 @@ export default function WeekGrid({ timetable, selection, solution }: WeekGridPro
       const chosenId = solution.assignment.seminarChoice[subject.code];
       for (const seminar of subject.seminars) {
         if (seminar.id === chosenId || !subjectSelection.seminars[seminar.id]) continue;
+        if (subjectSelection.reclassified[seminar.id]) continue; // fixed as a lecture, not a candidate
         for (const slot of seminar.slots) {
           const list = byDay.get(slot.day) ?? [];
           list.push({ event: seminar, slot, subjectName: subject.name });

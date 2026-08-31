@@ -1,5 +1,6 @@
 import { slotDuringLunch } from './lunch';
 import { eventsOverlap } from './overlap';
+import { asLecture } from './reclassify';
 import { hashString, mulberry32, pickFrom, unitFrom } from './random';
 import { resolveAssignment, scoreResolved } from './score';
 import { assignmentKey, pickVariety, selectDiverse, varietyTolerance, type VarietyPick } from './variety';
@@ -77,6 +78,10 @@ interface BuiltVariables {
  * situation the plan ever exercises the keep/drop choice for, so it is derived rather
  * than searched. ★ lectures are never dropped: a day off blocked by one is caught
  * earlier, in analysis.ts, before the solver ever runs.
+ *
+ * Seminars reclassified as lectures follow the same rule: they're fixed, not searched, so a
+ * day off drops them exactly like a non-★ lecture rather than hard-filtering them out of a
+ * group choice (there is no group choice left once a seminar is reclassified).
  */
 export function deriveDroppedLectures(timetable: Timetable, selection: Selection, daysOff: Day[]): Set<string> {
   const dropped = new Set<string>();
@@ -87,6 +92,10 @@ export function deriveDroppedLectures(timetable: Timetable, selection: Selection
       const lectureSelection = subjectSelection.lectures[lecture.id];
       if (!lectureSelection?.enabled || lectureSelection.required) continue;
       if (lecture.slots.some((slot) => daysOff.includes(slot.day))) dropped.add(lecture.id);
+    }
+    for (const seminar of subject.seminars) {
+      if (!subjectSelection.reclassified[seminar.id] || !subjectSelection.seminars[seminar.id]) continue;
+      if (seminar.slots.some((slot) => daysOff.includes(slot.day))) dropped.add(seminar.id);
     }
   }
   return dropped;
@@ -101,6 +110,11 @@ function fixedLectures(timetable: Timetable, selection: Selection, dropped: Set<
       if (!subjectSelection.lectures[lecture.id]?.enabled) continue;
       if (dropped.has(lecture.id)) continue;
       events.push(lecture);
+    }
+    for (const seminar of subject.seminars) {
+      if (!subjectSelection.reclassified[seminar.id] || !subjectSelection.seminars[seminar.id]) continue;
+      if (dropped.has(seminar.id)) continue;
+      events.push(asLecture(seminar));
     }
   }
   return events;
@@ -156,7 +170,9 @@ function buildVariables(
     const subjectSelection = selection[subject.code];
     if (!subjectSelection?.enabled || subject.seminars.length === 0) continue;
 
-    const enabledGroups = subject.seminars.filter((s) => subjectSelection.seminars[s.id]);
+    const enabledGroups = subject.seminars.filter(
+      (s) => subjectSelection.seminars[s.id] && !subjectSelection.reclassified[s.id],
+    );
     const survivors = enabledGroups.filter(
       (s) => !s.slots.some((slot) => daysOff.includes(slot.day) || slotDuringLunch(slot, lunch)),
     );

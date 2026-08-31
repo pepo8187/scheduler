@@ -164,6 +164,13 @@ export interface SubjectSelection {
   enabled: boolean;
   lectures: Record<string, LectureSelection>; // CourseEvent.id -> selection
   seminars: Record<string, boolean>; // CourseEvent.id -> enabled
+  /**
+   * Seminar groups the user has reclassified as lecture-like (e.g. a demo session that's really
+   * a lecture in disguise). A reclassified group is fixed rather than searched — it drops out of
+   * the subject's mutually-exclusive group choice and is attended whenever `seminars[id]` is
+   * true, subject to the same day-off drop as a non-★ lecture. See `domain/reclassify.ts`.
+   */
+  reclassified: Record<string, boolean>; // CourseEvent.id -> treated as a lecture
 }
 
 /** Keyed by Subject.code. */

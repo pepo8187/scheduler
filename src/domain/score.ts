@@ -1,5 +1,6 @@
 import { DAY_ORDER } from './format';
 import { findOverlaps, type Overlap } from './overlap';
+import { asLecture } from './reclassify';
 import type { Assignment, CourseEvent, Day, Prefs, Score, ScoreTerm, Selection, Slot, Timetable, Tuning } from './types';
 
 const WEEKDAYS = DAY_ORDER.slice(0, 5);
@@ -57,6 +58,12 @@ export function resolveAssignment(
       if (!subjectSelection.lectures[lecture.id]?.enabled) continue;
       if (assignment.droppedLectures.has(lecture.id)) continue;
       events.push(lecture);
+    }
+
+    for (const seminar of subject.seminars) {
+      if (!subjectSelection.reclassified[seminar.id] || !subjectSelection.seminars[seminar.id]) continue;
+      if (assignment.droppedLectures.has(seminar.id)) continue;
+      events.push(asLecture(seminar));
     }
 
     const chosenId = assignment.seminarChoice[subject.code];

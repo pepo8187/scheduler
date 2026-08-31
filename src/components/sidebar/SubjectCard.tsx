@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { describeSlots, describeTeachers } from '../../domain/format';
 import { isAllCleared, isUnfiltered } from '../../domain/teacherFilter';
-import type { Subject } from '../../domain/types';
+import type { CourseEvent, Subject } from '../../domain/types';
 import { useScheduler } from '../../state/schedulerStore';
 import TeacherChips from './TeacherChips';
 
@@ -14,6 +14,38 @@ export default function SubjectCard({ subject }: SubjectCardProps) {
   const [expanded, setExpanded] = useState(true);
   const subjectSelection = selection[subject.code];
   if (!subjectSelection) return null;
+
+  // Seminars the user has reclassified sit with the lectures — they're fixed, not chosen — and
+  // keep their group badge so it's still clear which physical group is standing in for a lecture.
+  const lectureLikeSeminars = subject.seminars.filter((s) => subjectSelection.reclassified[s.id]);
+  const regularSeminars = subject.seminars.filter((s) => !subjectSelection.reclassified[s.id]);
+
+  const renderSeminarRow = (seminar: CourseEvent, asLecture: boolean) => {
+    return (
+      <div key={seminar.id} className={`event-row ${asLecture ? 'event-row--lecture' : 'event-row--seminar'}`}>
+        <label className="event-row__checkbox">
+          <input
+            type="checkbox"
+            checked={subjectSelection.seminars[seminar.id] ?? false}
+            onChange={() => actions.toggleSeminar(subject.code, seminar.id)}
+          />
+          <span className="event-row__badge event-row__badge--seminar">{seminar.group}</span>
+        </label>
+        <div className="event-row__detail">
+          <span className="event-row__time">{describeSlots(seminar)}</span>
+          <span className="event-row__teacher">{describeTeachers(seminar)}</span>
+        </div>
+        <button
+          type="button"
+          className={`reclassify-toggle${asLecture ? ' reclassify-toggle--on' : ''}`}
+          onClick={() => actions.toggleSeminarReclassified(subject.code, seminar.id)}
+          title={asLecture ? 'Marked as a lecture — click to treat it as a seminar again' : 'Mark as a lecture'}
+        >
+          🎓
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div className={`subject-card${subjectSelection.enabled ? '' : ' subject-card--disabled'}`}>
@@ -69,6 +101,8 @@ export default function SubjectCard({ subject }: SubjectCardProps) {
             );
           })}
 
+          {lectureLikeSeminars.map((seminar) => renderSeminarRow(seminar, true))}
+
           {subject.seminars.length > 0 && (
             <div className="subject-card__seminar-tools">
               <div className="subject-card__reset">
@@ -95,22 +129,7 @@ export default function SubjectCard({ subject }: SubjectCardProps) {
             </div>
           )}
 
-          {subject.seminars.map((seminar) => (
-            <div key={seminar.id} className="event-row event-row--seminar">
-              <label className="event-row__checkbox">
-                <input
-                  type="checkbox"
-                  checked={subjectSelection.seminars[seminar.id] ?? false}
-                  onChange={() => actions.toggleSeminar(subject.code, seminar.id)}
-                />
-                <span className="event-row__badge event-row__badge--seminar">{seminar.group}</span>
-              </label>
-              <div className="event-row__detail">
-                <span className="event-row__time">{describeSlots(seminar)}</span>
-                <span className="event-row__teacher">{describeTeachers(seminar)}</span>
-              </div>
-            </div>
-          ))}
+          {regularSeminars.map((seminar) => renderSeminarRow(seminar, false))}
         </div>
       )}
     </div>
