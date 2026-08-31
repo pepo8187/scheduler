@@ -241,8 +241,10 @@ Built as written, with these decisions taken where the plan left them open:
 
 - **`poolK` is widened unconditionally**, `topK × POOL_FACTOR` (4), rather than only with
   Variety on — the dedupe needs the same headroom the band does. Measured before committing:
-  on the two bundled exports and the podzim24 fixture the search cost goes 9–16 ms → 14–23 ms,
-  and podzim2022's ~10 s is unchanged (it is dominated by the search space, not the pool width).
+  on the two bundled exports and the podzim24 fixture the search cost goes 9–16 ms → 14–23 ms
+  (vitest, shared CI container), and podzim2022 is unchanged — it is dominated by the search
+  space, not the pool width. Confirmed afterwards in a real browser on the full eight-subject
+  selection: `master` 7 964 ms against this work 7 972 ms, five runs each.
   The performance guard passes untouched. Factor 4 rather than 6: at 6 the strip reaches ten
   distinct day loads on podzim23 but spends its last rungs on visibly worse weeks (100 125 vs
   100 110), which is a worse trade than the extra shape buys. `VARIETY_POOL_FACTOR` was renamed

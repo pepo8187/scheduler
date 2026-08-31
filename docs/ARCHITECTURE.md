@@ -645,10 +645,16 @@ once per solve in `App` (two surfaces need it), then each ghost is ranked `free`
 
 The same numbers price the user's pins. `pinRelief` asks whether a pinned subject's own siblings
 hold something better right now — a true **lower bound** on what un-pinning would recover, since
-freeing the subject also lets everything else move, hence the "at least" in the UI. The exact
-figure needs a second full search: measured on podzim22 that is 14.8 s against the real solve's
-14.6 s (the bound is collision-dominated, so even `topK: 1` does not help), which is not a price
-worth paying for one line of text.
+freeing the subject also lets everything else move, hence the "at least" in the UI.
+
+The exact figure needs a **second full search**, and that search is not cheaper than the first:
+measured side by side on podzim22, a `topK: 1` baseline came back at 14.8 s against the real
+solve's 14.6 s, because the bound is collision-dominated and the comfort terms prune nothing
+extra. (Both figures are from vitest on a shared CI container — the ratio is the point, not the
+absolute numbers; the same solve is ~3 s in a browser on a laptop.) So showing the exact cost
+roughly **doubles every solve while any pin is set**. At laptop speed that is 3 s becoming 6 s,
+which is a real trade rather than an obvious one — worth revisiting if the search gets faster,
+or if the exact number turns out to matter more than the wait.
 
 ---
 
@@ -892,10 +898,14 @@ big enough comfort saving. They filter the domain instead.
 - **The variant list is bounded by the search pool** (`topK × POOL_FACTOR`), so on a timetable
   with hundreds of tied weeks it reports the labellings that survived to the pool rather than
   every one that exists. An empty list means "none among the candidates kept".
-- **A heavy fortnightly export is slow.** podzim2022 with five subjects takes ~15 s to solve —
-  un-collapsing odd/even twins roughly doubled every domain, and the branch-and-bound bound is
-  collision-dominated, so comfort terms prune almost nothing. Unrelated to the strip work
-  (measured identical before and after) but it is the ceiling everything else runs into.
+- **A heavy fortnightly export is the slowest thing the app does.** podzim2022 with all eight
+  subjects enabled is a **~3 s solve on a current laptop**; un-collapsing odd/even twins roughly
+  doubled every domain, and the branch-and-bound bound is collision-dominated, so the comfort
+  terms prune almost nothing. Not a regression from the strip or pinning work — measured in a
+  real browser, same machine, same selection, `master` at 7 964 ms against this work at
+  7 972 ms. **Benchmark numbers in this document are worth reading twice**: a shared CI
+  container runs this roughly 3× slower than a laptop, and vitest under jsdom slower again, so
+  quote a figure only alongside the thing it was compared against.
 - **Block-taught sessions are modelled as weekly.** A third cadence exists beyond weekly and
   fortnightly: sessions taught on a handful of named dates (`pouze Pá 4. 10., Pá 18. 10. a Pá
   25. 10.`). The `p947` groups in the podzim24 fixture are 400-minute slots of exactly this

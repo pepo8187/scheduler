@@ -181,11 +181,14 @@ where measurement contradicted it:
 - **"Pins are costing you N points" is a lower bound, not the figure.** The plan asked for the
   honest number, which needs a second full search with pins ignored. Measured before building
   it: on podzim22 that baseline solve takes **14.8 s against the real solve's 14.6 s** — the
-  branch-and-bound bound is collision-dominated, so even `topK: 1` prunes nothing extra. Doubling
-  a fifteen-second solve for one line of text is not a trade worth making. `pinRelief` asks the
-  cheap local question instead — is one of this subject's own siblings better right now? — which
-  is already computed for the ghost hovers and is a true floor on what un-pinning would recover.
-  The line says "at least" for that reason.
+  branch-and-bound bound is collision-dominated, so even `topK: 1` prunes nothing extra. The
+  ratio is the finding; **both numbers are vitest on a shared CI container** and overstate what a
+  user sees by roughly 5×. In a real browser on a laptop the same solve is about 3 s, so the
+  honest reading is "showing the exact cost doubles every solve while a pin is set, 3 s to 6 s".
+  That is a genuine trade rather than an obvious one, and it should be revisited.
+  `pinRelief` asks the cheap local question instead — is one of this subject's own siblings
+  better right now? — which is already computed for the ghost hovers and is a true floor on what
+  un-pinning would recover. The line says "at least" for that reason.
 - **No separate "clear pins" affordance.** With at most one pin per subject, clicking the pinned
   row's 📌 is the un-pin, so a second control would have had nothing to do.
 - **Un-pinning is not available from the grid.** A ghost click pins; a pinned block does not
