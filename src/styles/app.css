@@ -448,13 +448,14 @@
 }
 
 /* Teacher chips and this subject's own reset share a row; the chips take the space and the
-   reset stays pinned to the end, so it reads as acting on the chips beside it. */
+   reset stays pinned to the end, so it reads as acting on the chips beside it. Sits above the
+   seminar rows themselves — with dozens of groups, buried controls below them go unnoticed. */
 .subject-card__seminar-tools {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--gap-sm);
-  margin-top: 4px;
+  margin: 4px 0 6px;
 }
 
 .subject-card__seminar-tools .teacher-chips {

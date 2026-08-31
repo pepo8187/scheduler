@@ -69,23 +69,6 @@ export default function SubjectCard({ subject }: SubjectCardProps) {
             );
           })}
 
-          {subject.seminars.map((seminar) => (
-            <div key={seminar.id} className="event-row event-row--seminar">
-              <label className="event-row__checkbox">
-                <input
-                  type="checkbox"
-                  checked={subjectSelection.seminars[seminar.id] ?? false}
-                  onChange={() => actions.toggleSeminar(subject.code, seminar.id)}
-                />
-                <span className="event-row__badge event-row__badge--seminar">{seminar.group}</span>
-              </label>
-              <div className="event-row__detail">
-                <span className="event-row__time">{describeSlots(seminar)}</span>
-                <span className="event-row__teacher">{describeTeachers(seminar)}</span>
-              </div>
-            </div>
-          ))}
-
           {subject.seminars.length > 0 && (
             <div className="subject-card__seminar-tools">
               <TeacherChips subjectCode={subject.code} seminars={subject.seminars} />
@@ -111,6 +94,23 @@ export default function SubjectCard({ subject }: SubjectCardProps) {
               </div>
             </div>
           )}
+
+          {subject.seminars.map((seminar) => (
+            <div key={seminar.id} className="event-row event-row--seminar">
+              <label className="event-row__checkbox">
+                <input
+                  type="checkbox"
+                  checked={subjectSelection.seminars[seminar.id] ?? false}
+                  onChange={() => actions.toggleSeminar(subject.code, seminar.id)}
+                />
+                <span className="event-row__badge event-row__badge--seminar">{seminar.group}</span>
+              </label>
+              <div className="event-row__detail">
+                <span className="event-row__time">{describeSlots(seminar)}</span>
+                <span className="event-row__teacher">{describeTeachers(seminar)}</span>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
