@@ -430,6 +430,49 @@ describe('solve — node budget fallback', () => {
     const result = solve(timetable, selection, DEFAULT_PREFS, { nodeBudget: 0, random: () => 0 });
     expect(result.provenOptimal).toBe(false);
     expect(result.solutions.length).toBeGreaterThan(0);
+    expect(result.diagnostics.fallbackIterations).toBeGreaterThan(0);
+  });
+});
+
+describe('solve — diagnostics', () => {
+  it('reports elapsed time and nodes visited, and nothing from the fallback on a proven-optimal solve', () => {
+    const lecture = event('AA', 'AA', 'lecture', [slot('Po', 480, 570)]);
+    const goodGroup = event('BB/01', 'BB', 'seminar', [slot('Út', 480, 570)], '01');
+    const badGroup = event('BB/02', 'BB', 'seminar', [slot('Po', 480, 570)], '02');
+    const timetable = timetableOf([subject('AA', [lecture], []), subject('BB', [], [goodGroup, badGroup])]);
+    const selection = buildFullSelection(timetable);
+
+    const result = solve(timetable, selection, DEFAULT_PREFS);
+
+    expect(result.diagnostics.nodesVisited).toBeGreaterThan(0);
+    expect(result.diagnostics.elapsedMs).toBeGreaterThanOrEqual(0);
+    expect(result.diagnostics.fallbackIterations).toBe(0);
+  });
+
+  it('samples onProgress on a search heavy enough to cross the sampling interval', () => {
+    // 5 subjects x 8 seminar groups apiece, every slot globally distinct so nothing ever
+    // collides — the scale the performance regression guard below uses, just enough of it to
+    // reliably clear one 4096-node sampling interval without needing that test's full weight.
+    const days = ['Po', 'Út', 'St', 'Čt', 'Pá'] as const;
+    const subjects: Subject[] = [];
+    for (let i = 0; i < 5; i++) {
+      const seminars = Array.from({ length: 8 }, (_, j) => {
+        const t = i * 8 + j;
+        const day = days[t % 5]!;
+        const start = 480 + Math.floor(t / 5) * 60;
+        return event(`S${i}/${j}`, `S${i}`, 'seminar', [slot(day, start, start + 50)], String(j));
+      });
+      subjects.push(subject(`S${i}`, [], seminars));
+    }
+    const timetable = timetableOf(subjects);
+    const selection = buildFullSelection(timetable);
+
+    const samples: number[] = [];
+    const result = solve(timetable, selection, DEFAULT_PREFS, { onProgress: (n) => samples.push(n) });
+
+    expect(result.provenOptimal).toBe(true);
+    expect(samples.length).toBeGreaterThan(0);
+    for (let i = 1; i < samples.length; i++) expect(samples[i]).toBeGreaterThan(samples[i - 1]!);
   });
 });
 

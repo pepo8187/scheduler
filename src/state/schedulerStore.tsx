@@ -14,7 +14,7 @@ import { applyPreset, DEFAULT_PREFS, type PresetId } from '../domain/presets';
 import { newSeed, normalizeSeed } from '../domain/random';
 import { DEFAULT_TUNING } from '../domain/score';
 import type { SolveResult } from '../domain/solver';
-import type { SolveRequest, SolveResponse } from '../domain/solver.worker';
+import type { SolveRequest, SolveResponse, SolveProgress } from '../domain/solver.worker';
 import { applyTeacherChipClick } from '../domain/teacherFilter';
 import type { Day, Prefs, Selection, SubjectSelection, Timetable, Tuning } from '../domain/types';
 
@@ -372,6 +372,12 @@ export interface SchedulerContextValue {
   /** True while a solve is debouncing or running in the worker; the last-known solveResult
    *  stays visible in the meantime rather than flashing blank. */
   isSolving: boolean;
+  /** When the search itself (not the debounce) started, so the UI can tick a live timer.
+   *  Null whenever nothing is actually running in the worker yet. */
+  solveStartedAt: number | null;
+  /** Latest progress relayed from the worker on a solve heavy enough to report one; null until
+   *  the current solve's first sample arrives, and reset to null at the start of every solve. */
+  solveProgress: { nodesVisited: number; elapsedMs: number } | null;
   actions: SchedulerActions;
 }
 
@@ -444,6 +450,8 @@ export function SchedulerProvider({ children }: { children: ReactNode }) {
 
   const [solveResult, setSolveResult] = useState<SolveResult | null>(null);
   const [isSolving, setIsSolving] = useState(false);
+  const [solveStartedAt, setSolveStartedAt] = useState<number | null>(null);
+  const [solveProgress, setSolveProgress] = useState<{ nodesVisited: number; elapsedMs: number } | null>(null);
   const workerRef = useRef<Worker | null>(null);
   const requestIdRef = useRef(0);
 
@@ -452,9 +460,14 @@ export function SchedulerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof Worker === 'undefined') return; // no worker support: synchronous fallback below covers it
     const worker = new Worker(new URL('../domain/solver.worker.ts', import.meta.url), { type: 'module' });
-    worker.onmessage = (event: MessageEvent<SolveResponse>) => {
+    worker.onmessage = (event: MessageEvent<SolveResponse | SolveProgress>) => {
       if (event.data.requestId !== requestIdRef.current) return; // stale response from a superseded request
+      if (event.data.type === 'progress') {
+        setSolveProgress({ nodesVisited: event.data.nodesVisited, elapsedMs: event.data.elapsedMs });
+        return;
+      }
       setSolveResult(event.data.result);
+      setSolveProgress(null);
       setIsSolving(false);
     };
     workerRef.current = worker;
@@ -472,19 +485,32 @@ export function SchedulerProvider({ children }: { children: ReactNode }) {
       requestIdRef.current++;
       setSolveResult(null);
       setIsSolving(false);
+      setSolveStartedAt(null);
+      setSolveProgress(null);
       return;
     }
 
     const requestId = ++requestIdRef.current;
     setIsSolving(true);
+    // Cleared for the debounce window too, not just while the worker runs — otherwise the
+    // timer would keep counting up from the *previous* solve's start while this one is still
+    // waiting for typing to settle.
+    setSolveStartedAt(null);
+    setSolveProgress(null);
 
     const timeout = setTimeout(() => {
+      // Timed from here, not from the debounce above — the wait for typing to settle isn't
+      // part of the calculation, and a timer that included it would overstate every solve by
+      // a constant that has nothing to do with timetable size.
+      setSolveStartedAt(Date.now());
+      setSolveProgress(null);
       const worker = workerRef.current;
       if (worker) {
         const request: SolveRequest = { requestId, timetable, selection: state.selection, prefs: state.prefs };
         worker.postMessage(request);
       } else {
-        // No worker support in this environment: solve synchronously as a fallback.
+        // No worker support in this environment: solve synchronously as a fallback, which
+        // freezes this thread for the duration — a live timer couldn't render anyway.
         import('../domain/solver').then(({ solve }) => {
           if (requestId !== requestIdRef.current) return;
           setSolveResult(solve(timetable, state.selection, state.prefs));
@@ -508,6 +534,8 @@ export function SchedulerProvider({ children }: { children: ReactNode }) {
     pinConflicts,
     solveResult,
     isSolving,
+    solveStartedAt,
+    solveProgress,
     actions,
   };
 

@@ -32,7 +32,18 @@ export interface SolveOptions {
   nodeBudget?: number;
   /** Overrides the seeded RNG on the fallback path; tests use it to pin that walk exactly. */
   random?: () => number;
+  /**
+   * Called periodically (every few thousand DFS nodes) while the search is running, so a
+   * caller on the other side of a `postMessage` boundary — the worker — can relay live
+   * progress to the UI on a solve heavy enough for it to matter. Cheap and coarse by design:
+   * it costs a bitmask check per node, and callers are expected to throttle their own
+   * forwarding rather than rely on the sampling rate here.
+   */
+  onProgress?: (nodesVisited: number, elapsedMs: number) => void;
 }
+
+/** `performance.now()` where it exists (worker, browser, vitest); `Date.now()` otherwise. */
+const now = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
 /** One set of seminar groups that meet at the exact same times — interchangeable by definition. */
 export interface InterchangeableGroup {
@@ -70,6 +81,17 @@ export interface SolveResult {
    * `domain/variants.ts`. Empty for a rung that hides nothing.
    */
   variants: Solution[][];
+  /** How the search spent its time — surfaced so a slow solve can be diagnosed, not just felt. */
+  diagnostics: SolveDiagnostics;
+}
+
+export interface SolveDiagnostics {
+  /** Wall-clock time inside `solve()` — the search itself, not worker startup or message passing. */
+  elapsedMs: number;
+  /** DFS nodes visited before either finishing or hitting `nodeBudget`. */
+  nodesVisited: number;
+  /** Iterations the randomised local-search fallback ran; 0 unless the node budget was exceeded. */
+  fallbackIterations: number;
 }
 
 interface VariableValue {
@@ -467,6 +489,7 @@ export function solve(timetable: Timetable, selection: Selection, prefs: Prefs, 
   const tolerance = varietyTolerance(prefs);
   const poolK = topK * POOL_FACTOR;
 
+  const start = now();
   const best: Solution[] = [];
   const chosen: (CourseEvent | null)[] = new Array(variables.length).fill(null);
   let nodes = 0;
@@ -478,6 +501,11 @@ export function solve(timetable: Timetable, selection: Selection, prefs: Prefs, 
     if (nodes > nodeBudget) {
       budgetExceeded = true;
       return;
+    }
+    // Sampled, not per-node: a bitmask check is cheap enough to always run, but calling
+    // `onProgress` (and its `now()`) on every node would itself slow the search down.
+    if (options.onProgress && (nodes & 0xfff) === 0) {
+      options.onProgress(nodes, now() - start);
     }
 
     if (index === variables.length) {
@@ -516,8 +544,9 @@ export function solve(timetable: Timetable, selection: Selection, prefs: Prefs, 
 
   dfs(0, 0);
 
+  let fallbackIterations = 0;
   if (budgetExceeded) {
-    const iterations = Math.min(20_000, Math.max(200, Math.floor(nodeBudget / 100)));
+    fallbackIterations = Math.min(20_000, Math.max(200, Math.floor(nodeBudget / 100)));
     randomizedFallback(
       timetable,
       selection,
@@ -529,7 +558,7 @@ export function solve(timetable: Timetable, selection: Selection, prefs: Prefs, 
       compare,
       pinnedChoice,
       random,
-      iterations,
+      fallbackIterations,
     );
   }
 
@@ -554,5 +583,6 @@ export function solve(timetable: Timetable, selection: Selection, prefs: Prefs, 
     variety: pickVariety(solutions, prefs),
     interchangeable,
     variants,
+    diagnostics: { elapsedMs: now() - start, nodesVisited: nodes, fallbackIterations },
   };
 }
