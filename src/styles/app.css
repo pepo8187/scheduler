@@ -463,7 +463,9 @@
 }
 
 .subject-card__reset {
+  display: flex;
   flex: 0 0 auto;
+  gap: var(--gap-sm);
 }
 
 .button--tiny {
