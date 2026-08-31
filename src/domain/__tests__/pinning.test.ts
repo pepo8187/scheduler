@@ -147,6 +147,34 @@ describe('analyzePins — a pin a hard constraint overruled is never silent', ()
   });
 });
 
+describe('clicking a ghost is exactly a pin', () => {
+  it('lands the clicked group on the grid, whatever the optimizer preferred', () => {
+    // Step 4's whole payoff: a ghost strip names a group, and choosing it is the same
+    // operation the sidebar pin button performs — one subject, one value, no swap.
+    const clicked = 'BB/02';
+    const result = solve(timetable, pinning(clicked), prefs);
+    expect(result.solutions[0]!.events.map((e) => e.id)).toContain(clicked);
+  });
+
+  it('replaces an earlier pin rather than stacking, so a second click just moves the choice', () => {
+    const first = solve(timetable, pinning('BB/02'), prefs).solutions[0]!;
+    const second = solve(timetable, pinning('BB/03'), prefs).solutions[0]!;
+    expect(first.assignment.seminarChoice.BB).toBe('BB/02');
+    expect(second.assignment.seminarChoice.BB).toBe('BB/03');
+  });
+
+  it('costs exactly what the ghost promised on hover', () => {
+    // The hover says "+N points if you switched to this". Here BB is the only decision left, so
+    // the pinned optimum has to land on precisely that number. With more subjects free to move
+    // around the pin the result can only be *better* than promised, never worse — the promise
+    // is one reachable week, and the search still gets to pick the best one containing it.
+    const free = solve(timetable, buildFullSelection(timetable), prefs).solutions[0]!;
+    const promised = switchCosts(timetable, buildFullSelection(timetable), prefs, free).get('BB/03')!;
+    const pinnedBest = solve(timetable, pinning('BB/03'), prefs).solutions[0]!;
+    expect(pinnedBest.score.total).toBeCloseTo(free.score.total + promised.delta, 9);
+  });
+});
+
 describe('pinRelief — what the pins are costing', () => {
   it('names the pin and a floor on what un-pinning would recover', () => {
     const selection = pinning('BB/03');

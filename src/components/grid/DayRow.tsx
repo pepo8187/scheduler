@@ -4,7 +4,9 @@ import type { DayBlockInfo } from './gridTypes';
 
 const BLOCK_HEIGHT = 76;
 const BLOCK_GAP = 6;
-const GHOST_HEIGHT = 8;
+/* Two pixels taller than it needs to be as decoration: a ghost is now a button you click to
+   choose that group, and 8px is not a target anyone can hit. */
+const GHOST_HEIGHT = 10;
 const GHOST_GAP = 2;
 
 interface DayRowProps {
@@ -14,6 +16,8 @@ interface DayRowProps {
   hours: HourRulerEntry[];
   blocks: DayBlockInfo[];
   ghostBlocks: DayBlockInfo[];
+  /** Clicking a ghost chooses that group. Absent while there is no solution to switch from. */
+  onPin?: (subjectCode: string, seminarId: string) => void;
 }
 
 function assignLanes(blocks: DayBlockInfo[]): Array<{ block: DayBlockInfo; lane: number }> {
@@ -33,7 +37,7 @@ function assignLanes(blocks: DayBlockInfo[]): Array<{ block: DayBlockInfo; lane:
   return placed;
 }
 
-export default function DayRow({ day, minHour, maxHour, hours, blocks, ghostBlocks }: DayRowProps) {
+export default function DayRow({ day, minHour, maxHour, hours, blocks, ghostBlocks, onPin }: DayRowProps) {
   const placed = assignLanes(blocks);
   const laneCount = placed.length > 0 ? Math.max(...placed.map((p) => p.lane + 1)) : 1;
   const mainHeight = laneCount * BLOCK_HEIGHT + (laneCount - 1) * BLOCK_GAP;
@@ -81,6 +85,7 @@ export default function DayRow({ day, minHour, maxHour, hours, blocks, ghostBloc
             height={GHOST_HEIGHT}
             ghost
             switchCost={block.switchCost}
+            onActivate={onPin ? () => onPin(block.event.subjectCode, block.event.id) : undefined}
           />
         ))}
       </div>

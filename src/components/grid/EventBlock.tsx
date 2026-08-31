@@ -19,6 +19,8 @@ interface EventBlockProps {
   switchCost?: SwitchCost;
   /** Scheduled blocks only: the user chose this group, so the optimizer left it alone. */
   pinned?: boolean;
+  /** Makes the block a button. Ghosts use it to pin the group they stand for. */
+  onActivate?: () => void;
 }
 
 export default function EventBlock({
@@ -33,6 +35,7 @@ export default function EventBlock({
   ghost,
   switchCost,
   pinned,
+  onActivate,
 }: EventBlockProps) {
   const total = maxHour - minHour;
   const left = ((slot.start - minHour) / total) * 100;
@@ -49,6 +52,7 @@ export default function EventBlock({
     // it readable: the free swaps stand out, the ones that would collide recede.
     ghost && switchCost && `event-block--ghost-${switchTier(switchCost)}`,
     pinned && 'event-block--pinned',
+    onActivate && 'event-block--actionable',
   ]
     .filter(Boolean)
     .join(' ');
@@ -62,16 +66,23 @@ export default function EventBlock({
   // The number that makes a ghost worth reading rather than merely visible.
   const cost = ghost && switchCost ? describeSwitchCost(switchCost) : '';
 
+  const detail = `${event.id} ${subjectName}\n${formatMinutes(slot.start)}-${formatMinutes(slot.end)}${cadence ? ` — ${cadence}` : ''}${teachers ? `\n${teachers}` : ''}${rooms ? `\n${rooms}` : ''}${cost ? `\n\n${cost}` : ''}${onActivate ? '\nClick to choose this group' : ''}${pinned ? '\n\nYou chose this group — the optimizer is leaving it alone. Un-pin it in the sidebar.' : ''}${slot.note ? `\n\n${slot.note}` : ''}`;
+
+  // A ghost that can be acted on is a real button, not a div with a click handler: it has to be
+  // reachable by keyboard, and the ghost row is otherwise the one part of the grid that isn't.
+  const Tag = onActivate ? 'button' : 'div';
+
   return (
-    <div
+    <Tag
       className={classNames}
       style={{ left: `${left}%`, width: `${width}%`, top, height }}
-      title={`${event.id} ${subjectName}\n${formatMinutes(slot.start)}-${formatMinutes(slot.end)}${cadence ? ` — ${cadence}` : ''}${teachers ? `\n${teachers}` : ''}${rooms ? `\n${rooms}` : ''}${cost ? `\n\n${cost}` : ''}${slot.note ? `\n\n${slot.note}` : ''}`}
+      title={detail}
+      {...(onActivate ? { type: 'button' as const, onClick: onActivate, 'aria-label': detail } : {})}
     >
       {!ghost && (
         <>
           {pinned && (
-            <span className="event-block__pin" title="You pinned this group — the optimizer is leaving it alone">
+            <span className="event-block__pin" aria-hidden="true">
               📌
             </span>
           )}
@@ -91,6 +102,6 @@ export default function EventBlock({
           {rooms && <span className="event-block__room">{rooms}</span>}
         </>
       )}
-    </div>
+    </Tag>
   );
 }

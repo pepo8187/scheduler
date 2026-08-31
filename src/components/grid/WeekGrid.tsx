@@ -28,9 +28,11 @@ interface WeekGridProps {
   solution: Solution | null;
   /** What every unchosen group would cost, priced once per solve in `App`. */
   costs: Map<string, SwitchCost>;
+  /** Clicking a ghost chooses that group — the payoff of `pinned` existing at all. */
+  onPin: (subjectCode: string, seminarId: string) => void;
 }
 
-export default function WeekGrid({ timetable, selection, solution, costs }: WeekGridProps) {
+export default function WeekGrid({ timetable, selection, solution, costs, onPin }: WeekGridProps) {
   const subjectNames = useMemo(() => new Map(timetable.subjects.map((s) => [s.code, s.name])), [timetable]);
 
   const blocksByDay = useMemo(() => {
@@ -87,6 +89,7 @@ export default function WeekGrid({ timetable, selection, solution, costs }: Week
             hours={timetable.hours}
             blocks={blocksByDay.get(day) ?? []}
             ghostBlocks={ghostsByDay.get(day) ?? []}
+            onPin={onPin}
           />
         ))}
       </div>

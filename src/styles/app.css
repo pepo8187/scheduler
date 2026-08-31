@@ -1408,9 +1408,23 @@
      meant their tooltip never fired. They now carry what switching to them would cost, which
      is only reachable on hover. */
   pointer-events: auto;
-  cursor: help;
+  cursor: pointer;
   padding: 0 6px;
   justify-content: center;
+  /* Rendered as a <button> once it can be acted on, so it needs the button defaults stripped
+     back to what the block styling assumes. */
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  appearance: none;
+}
+
+.event-block--actionable:hover,
+.event-block--actionable:focus-visible {
+  opacity: 1;
+  border-style: solid;
+  outline: none;
+  box-shadow: 0 0 0 2px var(--primary);
 }
 
 /* Ranked by what the switch would cost, so a row of forty strips reads at a glance: the free
