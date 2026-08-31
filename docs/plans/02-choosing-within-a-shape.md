@@ -1,7 +1,7 @@
 # Plan 2 — Choosing within a shape
 
-**Status:** not started. **Depends on Plan 1** (`01-distinct-shapes.md`) for
-`blockShapeKey` and the shape-aware alternatives strip. Do not start this first.
+**Status:** not started. **Depends on Plan 1** (`01-distinct-shapes.md`), which is now **done**:
+`blockShapeKey` lives in `src/domain/shape.ts` and the alternatives strip is shape-deduped.
 
 **Scope:** the interactive half — letting a user see what else could occupy a slot and act on
 it. Adds new selection state, which Plan 1 deliberately does not.

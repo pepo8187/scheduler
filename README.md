@@ -39,7 +39,9 @@ algorithms, the invariants and the reasoning behind them — is in
   collision unavoidable, the app still returns the least-bad schedule rather than an empty
   result — see *A real unavoidable collision* below for a case that actually happens on load.
 - **Shows the top 10**, not just one answer — the alternatives strip lets you page through the
-  next-best schedules and see how their score breaks down against the one you're looking at.
+  next-best schedules and see how their score breaks down against the one you're looking at. Each
+  rung is a *different week*, not a different spelling of the same one, and says which days it
+  uses. See *Ten different weeks* below.
 - **Doesn't hand your whole year the same schedule** — a personal *variation seed* decides which
   of the equally-good answers you get, so four hundred people taking the same first-semester
   subjects don't all get sent to seminar group 01. Free by default; an optional **Variety**
@@ -230,6 +232,39 @@ like any other preference. The priority weights feed the search's admissible low
 as the score, so lowering them genuinely changes which schedules the solver will consider —
 that's noted in the panel.
 
+### Ten different weeks, not ten spellings of one
+
+The alternatives strip shows the ten best schedules. That sounds like ten options and often
+wasn't: on the autumn 2022 export under neutral preferences, **1 404 combinations tie at the
+optimum**, and the ten that reached the strip were routinely the same Monday and Tuesday of fixed
+lectures with one seminar pair moved — technically distinct, perceptually identical. Ten rungs
+all reading "#n / 55" invite a click through all ten to discover that.
+
+So the strip is deduped by **week shape** — what the week looks like with the labels taken off
+(`domain/shape.ts`). Two altitudes, filled in order:
+
+1. **Which days you're on campus, and how loaded each one is.** The difference you notice first.
+   A real export yields three to six of these in a top ten, and they go on the strip first.
+2. **Which blocks are occupied**, ignoring which subject sits in which. Two subjects trading
+   time slots is one week, not two — 12–35 % of shapes on real selections contain such a swap.
+   These backfill the remaining rungs, so the strip is still ten rungs deep.
+
+Ignoring the labels is exact rather than approximate: every score term reads only day, start and
+end, never who is taught in a block, so two assignments with the same blocks score *identically*
+— measured at 0.000000 spread across three real selections, and pinned by a test.
+
+Times are canonicalised against the export's own `<hodiny>` teaching grid before comparing, which
+is how a class running to 15:40 and one running to 15:50 count as the same week. (They do occur:
+`CORE033` is a university-wide course from another faculty and finishes ten minutes early.)
+Rounding to a fixed bucket cannot do this — two times ten minutes apart can straddle a bucket
+edge — whereas the grid is the one the timetable is literally drawn on. **The snapped times are
+for comparison only and never reach the score**: those ten minutes are real class time, and the
+dead-time and barely-used-day terms have to keep charging for them.
+
+Three things the strip still guarantees, unchanged: **#1 is the strict optimum**, the list is
+**sorted by real score**, and every rung is **the best-scoring member of its shape** — never an
+arbitrary one, so a rung can't hide a better week inside it.
+
 ### Variation — why you aren't handed everyone else's schedule
 
 Up to four hundred people in a first semester take the exact same subjects. Feed the same export
@@ -270,7 +305,9 @@ week, so the **Variety** slider is off until you turn it on:
   buy either).
 - The alternatives strip stays a truthful ladder, sorted by real score. Variety **marks** a rung
   rather than reordering them, the price of the pick is printed in points, and the strict optimum
-  stays one click away.
+  stays one click away. The rungs it chooses between are the distinct week shapes described
+  above, so the band has genuinely different weeks to work with rather than forty relabellings
+  of one.
 - Each seed also gets its own ranking of the weekdays, and within the band prefers weeks leaning
   its way. Plain jitter would be weak here, because the whole near-optimal band can be
   Monday-heavy; a per-student day ranking is what actually spreads the cohort. Across a year those

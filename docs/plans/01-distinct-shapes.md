@@ -1,7 +1,8 @@
 # Plan 1 — Distinct week shapes in the alternatives strip
 
-**Status:** not started. Depends on the alternating-week parity work (merged/on
-`claude/alternating-week-seminars-o29ngi`, PR #14).
+**Status:** **done.** Landed as `domain/shape.ts` + a hierarchical `selectDiverse`, on by
+default for every user. What was built and how it differs from this plan is recorded at the end
+under *What shipped*. Depended on the alternating-week parity work (merged, PR #14).
 
 **Scope:** presentation only. No new selection state, no new user interaction. Plan 2
 (`02-choosing-within-a-shape.md`) builds the interactive half on top of what this one
@@ -231,3 +232,36 @@ notes in § The objective function, and strike the ties entry from § Known gaps
   sessions taught on three specific dates ("pouze Pá 4. 10., 18. 10. a 25. 10."), not weekly
   at all. The app models them as a 6h40m weekly commitment, which badly overstates them. A
   third cadence beyond weekly/fortnightly — worth its own plan, not this one.
+
+---
+
+## What shipped
+
+Built as written, with these decisions taken where the plan left them open:
+
+- **`poolK` is widened unconditionally**, `topK × POOL_FACTOR` (4), rather than only with
+  Variety on — the dedupe needs the same headroom the band does. Measured before committing:
+  on the two bundled exports and the podzim24 fixture the search cost goes 9–16 ms → 14–23 ms,
+  and podzim2022's ~10 s is unchanged (it is dominated by the search space, not the pool width).
+  The performance guard passes untouched. Factor 4 rather than 6: at 6 the strip reaches ten
+  distinct day loads on podzim23 but spends its last rungs on visibly worse weeks (100 125 vs
+  100 110), which is a worse trade than the extra shape buys. `VARIETY_POOL_FACTOR` was renamed
+  `POOL_FACTOR` accordingly.
+- **Step 4 shows the day set**, not the differing blocks: each rung prints "Po Út Pá" with the
+  per-day loads on hover (`describeShapeDays` / `describeShapeLoad`). It is the visible face of
+  `dayLoadKey`, which is the key pass 1 dedupes on, so it is exactly what differs between the
+  rungs at the top of the strip. Rungs backfilled by `blockShapeKey` can repeat a day set —
+  they differ in *when*, not in *whether* — which is what the tooltip is for.
+- **Measured effect**, top ten, neutral preferences, five subjects per export: distinct
+  `dayLoadKey`s went 5 → 8 on podzim23 and 2 → 8 on podzim24. On podzim2022 it stays at 3: all
+  1 404 optimum-tied combinations there really do use the same three day loads, so the strip
+  spends its remaining rungs on distinct block shapes instead, which is the intended fallback.
+
+Open risks from above, as they stand now:
+
+- **Over-merging on an unusual export** remains unconfirmed either way; no second export with
+  genuinely off-grid classes has been checked. The failure stays benign (a hidden alternative).
+- **Fewer effective rungs** did not materialise — passes 2 and 3 backfill to ten on every export
+  tried.
+- **Block-taught sessions** (podzim24's `p947`) are still modelled as weekly; untouched here, and
+  now recorded in `docs/ARCHITECTURE.md` § Known gaps.
