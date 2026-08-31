@@ -501,6 +501,46 @@
   background: var(--primary-container);
 }
 
+/* Pinning is a real primary action — "I want this group" — so unlike the reclassify button it
+   doesn't hide until hovered. It shares the geometry so the two sit as a pair. */
+.pin-toggle {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.45;
+  filter: grayscale(1);
+  transition: opacity 120ms ease, filter 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+.pin-toggle:hover {
+  opacity: 0.85;
+  filter: grayscale(0.2);
+  border-color: var(--ghost-outline);
+}
+
+.pin-toggle--on {
+  opacity: 1;
+  filter: none;
+  border-color: var(--primary);
+  background: var(--primary-container);
+}
+
+/* The pinned row itself is marked too: the button alone is easy to miss in a list of forty
+   groups, and "why is the optimizer not moving this?" has to be answerable at a glance. */
+.event-row--pinned {
+  background: var(--primary-container);
+  border-radius: var(--r-sm);
+}
+
 .teacher-chips {
   display: flex;
   flex-wrap: wrap;
@@ -802,6 +842,19 @@
   font-weight: 650;
 }
 
+/* The days this rung uses — the shape the strip is deduped by, so it's what differs between
+   neighbouring rungs. Tabular figures keep the column from jittering as day sets change. */
+.alternatives-bar__shape {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.alternatives-bar__item--active .alternatives-bar__shape {
+  color: inherit;
+}
+
 .alternatives-bar__note {
   font-size: var(--fs-xs);
   color: var(--warn);
@@ -824,6 +877,43 @@
   height: 5px;
   border-radius: var(--r-pill);
   background: var(--seminar-accent);
+}
+
+/* Other labellings of the week on screen: same blocks, same score, different subjects in them.
+   A chip row rather than a list — the moves are short and there are at most a handful. */
+.shape-variants {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: var(--gap-md);
+}
+
+.shape-variants__label {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.shape-variants__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-size: var(--fs-xs);
+  background: var(--surface-alt);
+  border: 1px solid var(--outline);
+  border-radius: var(--r-pill);
+  cursor: pointer;
+}
+
+.shape-variants__item--active {
+  background: var(--primary-container);
+  border-color: var(--primary);
+}
+
+.shape-variants__more {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 /* --- Variation: seed row, status line, explainer bars --- */
@@ -1314,9 +1404,43 @@
   border-left: 1px dashed var(--seminar-accent);
   box-shadow: none;
   opacity: 0.55;
-  pointer-events: none;
+  /* Ghosts used to be inert decoration, so they took no pointer events at all — which also
+     meant their tooltip never fired. They now carry what switching to them would cost, which
+     is only reachable on hover. */
+  pointer-events: auto;
+  cursor: pointer;
   padding: 0 6px;
   justify-content: center;
+  /* Rendered as a <button> once it can be acted on, so it needs the button defaults stripped
+     back to what the block styling assumes. */
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  appearance: none;
+}
+
+.event-block--actionable:hover,
+.event-block--actionable:focus-visible {
+  opacity: 1;
+  border-style: solid;
+  outline: none;
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+/* Ranked by what the switch would cost, so a row of forty strips reads at a glance: the free
+   ones step forward, the ones that would land on top of another class recede. Never the only
+   signal — the exact number is on hover, and the tier is named there too. */
+.event-block--ghost-free {
+  opacity: 1;
+  border-style: solid;
+}
+
+.event-block--ghost-costly {
+  opacity: 0.55;
+}
+
+.event-block--ghost-blocked {
+  opacity: 0.2;
 }
 
 .event-block__warning {
@@ -1324,6 +1448,38 @@
   top: 2px;
   right: 4px;
   font-size: var(--fs-xs);
+}
+
+/* A pinned block, marked on the grid as well as in the sidebar — otherwise "the optimizer
+   stopped moving this subject" has no visible cause on the surface the user is looking at. */
+.event-block--pinned {
+  border-style: solid;
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.event-block__pin {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  font-size: var(--fs-xs);
+}
+
+/* The marker sits in the top-left corner, where the course code starts — indent the code out
+   from under it, the same way the ⚠ badge already shifts the parity chip on the right. */
+.event-block--pinned .event-block__code {
+  padding-left: 15px;
+}
+
+/* Pins fight the optimizer by design; this is the price, stated rather than left to be
+   discovered. A floor, not the exact figure — see `domain/switching.ts`. */
+.pin-status {
+  margin: 0 0 var(--gap-md);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.pin-status__icon {
+  margin-right: 4px;
 }
 
 .event-block__code {

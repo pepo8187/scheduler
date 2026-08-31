@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { DAY_ORDER } from '../../domain/format';
 import { slotsOverlap, type Overlap } from '../../domain/overlap';
+import type { SwitchCost } from '../../domain/switching';
 import type { CourseEvent, Day, Selection, Slot, Solution, Timetable } from '../../domain/types';
 import DayRow from './DayRow';
 import type { DayBlockInfo } from './gridTypes';
@@ -25,9 +26,13 @@ interface WeekGridProps {
   timetable: Timetable;
   selection: Selection;
   solution: Solution | null;
+  /** What every unchosen group would cost, priced once per solve in `App`. */
+  costs: Map<string, SwitchCost>;
+  /** Clicking a ghost chooses that group — the payoff of `pinned` existing at all. */
+  onPin: (subjectCode: string, seminarId: string) => void;
 }
 
-export default function WeekGrid({ timetable, selection, solution }: WeekGridProps) {
+export default function WeekGrid({ timetable, selection, solution, costs, onPin }: WeekGridProps) {
   const subjectNames = useMemo(() => new Map(timetable.subjects.map((s) => [s.code, s.name])), [timetable]);
 
   const blocksByDay = useMemo(() => {
@@ -41,12 +46,13 @@ export default function WeekGrid({ timetable, selection, solution }: WeekGridPro
           slot,
           subjectName: subjectNames.get(event.subjectCode) ?? event.subjectCode,
           collisionKind: collisionKindForSlot(event, slot, solution.overlaps),
+          pinned: selection[event.subjectCode]?.pinned?.[event.id] ?? false,
         });
         byDay.set(slot.day, list);
       }
     }
     return byDay;
-  }, [solution, subjectNames]);
+  }, [solution, subjectNames, selection]);
 
   // Unselected candidate groups: enabled but not chosen, rendered as faint outlines
   // so it stays visible what the optimizer passed over.
@@ -62,13 +68,13 @@ export default function WeekGrid({ timetable, selection, solution }: WeekGridPro
         if (subjectSelection.reclassified[seminar.id]) continue; // fixed as a lecture, not a candidate
         for (const slot of seminar.slots) {
           const list = byDay.get(slot.day) ?? [];
-          list.push({ event: seminar, slot, subjectName: subject.name });
+          list.push({ event: seminar, slot, subjectName: subject.name, switchCost: costs.get(seminar.id) });
           byDay.set(slot.day, list);
         }
       }
     }
     return byDay;
-  }, [solution, selection, timetable]);
+  }, [solution, selection, timetable, costs]);
 
   return (
     <div className="week-grid">
@@ -83,6 +89,7 @@ export default function WeekGrid({ timetable, selection, solution }: WeekGridPro
             hours={timetable.hours}
             blocks={blocksByDay.get(day) ?? []}
             ghostBlocks={ghostsByDay.get(day) ?? []}
+            onPin={onPin}
           />
         ))}
       </div>

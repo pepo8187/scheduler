@@ -1,4 +1,4 @@
-import type { DayOffAnalysis, LectureConflict, LunchAnalysis } from '../../domain/analysis';
+import type { DayOffAnalysis, LectureConflict, LunchAnalysis, PinConflict } from '../../domain/analysis';
 import { DAY_LABELS } from '../../domain/format';
 import type { Day, Solution } from '../../domain/types';
 
@@ -8,9 +8,17 @@ interface DiagnosticsPanelProps {
   dayOffAnalysis: Record<Day, DayOffAnalysis> | null;
   daysOff: Day[];
   lunchAnalysis: LunchAnalysis | null;
+  pinConflicts: PinConflict[];
 }
 
-export default function DiagnosticsPanel({ solution, lectureConflicts, dayOffAnalysis, daysOff, lunchAnalysis }: DiagnosticsPanelProps) {
+export default function DiagnosticsPanel({
+  solution,
+  lectureConflicts,
+  dayOffAnalysis,
+  daysOff,
+  lunchAnalysis,
+  pinConflicts,
+}: DiagnosticsPanelProps) {
   const collisions = solution?.overlaps.filter((o) => o.kind === 'seminar') ?? [];
   const droppedIds = solution ? [...solution.assignment.droppedLectures] : [];
   const blockedDays = dayOffAnalysis ? Object.values(dayOffAnalysis).filter((a) => a.blockers.length > 0) : [];
@@ -27,7 +35,8 @@ export default function DiagnosticsPanel({ solution, lectureConflicts, dayOffAna
     tradeOffs.length === 0 &&
     lectureConflicts.length === 0 &&
     lunchLectureOverlaps.length === 0 &&
-    lunchTradeOffs.length === 0;
+    lunchTradeOffs.length === 0 &&
+    pinConflicts.length === 0;
 
   if (clean) {
     return <p className="diagnostics-panel diagnostics-panel--clean">No collisions, drops, or trade-offs — this schedule is clean.</p>;
@@ -54,6 +63,20 @@ export default function DiagnosticsPanel({ solution, lectureConflicts, dayOffAna
           <ul>
             {droppedIds.map((id) => (
               <li key={id}>{id}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {pinConflicts.length > 0 && (
+        <div className="diagnostics-panel__section diagnostics-panel__section--warn">
+          <h4>Pins a hard constraint overruled</h4>
+          <ul>
+            {pinConflicts.map((conflict) => (
+              <li key={conflict.group.id}>
+                {conflict.group.id} ({conflict.when}) — {conflict.reason}, so the optimizer is choosing{' '}
+                {conflict.subject.code} for you. The pin comes back when the constraint lifts.
+              </li>
             ))}
           </ul>
         </div>

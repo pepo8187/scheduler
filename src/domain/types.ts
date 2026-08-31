@@ -179,6 +179,21 @@ export interface SubjectSelection {
    * true, subject to the same day-off drop as a non-★ lecture. See `domain/reclassify.ts`.
    */
   reclassified: Record<string, boolean>; // CourseEvent.id -> treated as a lecture
+  /**
+   * The group the user has *chosen*, as opposed to merely allowed.
+   *
+   * `seminars` says which groups the solver may pick from; this says which one it must pick.
+   * At most one per subject — pinning a second replaces the first — and pinning implies
+   * enabling, so a pin is dropped the moment its group is switched off, filtered out by a
+   * teacher chip, or reclassified as a lecture.
+   *
+   * A pinned group stops being a searched variable and becomes fixed input, the same way a
+   * reclassified one does, except that it stays a *seminar*: it is still the subject's group,
+   * so a collision it causes is a seminar collision and is scored like one. A pin a hard
+   * constraint forbids (a day off, the lunch block) loses rather than producing an infeasible
+   * week — `analyzePins` reports that instead of the app pretending it held.
+   */
+  pinned: Record<string, boolean>; // CourseEvent.id -> the user's explicit choice
 }
 
 /** Keyed by Subject.code. */

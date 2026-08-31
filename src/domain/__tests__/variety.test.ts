@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_PREFS } from '../presets';
-import { dayAffinity } from '../random';
+import { dayAffinity, unitFrom } from '../random';
+import { blockShapeKey, dayLoadKey } from '../shape';
 import type { CourseEvent, Day, Prefs, Slot, Solution } from '../types';
 import {
   affinityMismatch,
@@ -187,6 +188,75 @@ describe('selectDiverse', () => {
     ];
     const chosen = selectDiverse(pool, 3, compare);
     expect(chosen.map((s) => s.score.total)).toEqual([100, 101, 102]);
+  });
+});
+
+describe('selectDiverse — coarse to fine', () => {
+  const compare = (a: Solution, b: Solution) => a.score.total - b.score.total;
+  // The 08:00-19:50 teaching grid every MUNI export declares, abbreviated to what these use.
+  const hours = [480, 540, 600, 660, 720, 780, 840, 900].map((start) => ({ start, end: start + 50 }));
+  const keys = [
+    (s: Solution) => dayLoadKey(s.events),
+    (s: Solution) => blockShapeKey(s.events, hours),
+  ];
+
+  /**
+   * Three day loads x four block shapes, all 110 minutes on one day so the day loads are equal
+   * within a group and the block shapes differ inside it. Scores ascend in day-load order, so
+   * a plain best-first top three would take three spellings of the Monday week.
+   */
+  const pool: Solution[] = [];
+  (['Po', 'Út', 'St'] as Day[]).forEach((day, d) => {
+    for (let b = 0; b < 4; b++) {
+      const start = 480 + b * 120;
+      pool.push(solution(100 + d * 4 + b, [event(`AA/${d}${b}`, [slot(day, start, start + 110)])], { AA: `AA/${d}${b}` }));
+    }
+  });
+
+  it('fills the first rungs from distinct day loads rather than from the best score', () => {
+    const chosen = selectDiverse(pool, 3, compare, keys);
+    expect(chosen.map((s) => s.score.total)).toEqual([100, 104, 108]);
+    expect(new Set(chosen.map(keys[0]!)).size).toBe(3);
+  });
+
+  it('backfills the rest from block shapes the strip has not shown yet', () => {
+    const chosen = selectDiverse(pool, 6, compare, keys);
+    // Still the three distinct day loads, plus three finer variations — and no repeats.
+    expect(new Set(chosen.map(keys[0]!)).size).toBe(3);
+    expect(new Set(chosen.map(keys[1]!)).size).toBe(6);
+    expect(chosen.map((s) => s.score.total)).toEqual([100, 101, 102, 103, 104, 108]);
+  });
+
+  it('never returns more than the pool holds, whatever the keys', () => {
+    expect(selectDiverse(pool, 40, compare, keys)).toHaveLength(pool.length);
+  });
+
+  it('still works with one key, so the old single-shape call is unchanged', () => {
+    const chosen = selectDiverse(pool, 3, compare);
+    expect(chosen.map((s) => s.score.total)).toEqual([100, 104, 108]);
+  });
+});
+
+describe('selectDiverse — the representative of a class is its best member', () => {
+  // Once times are canonicalised a class can hold members that do *not* score the same (15:40
+  // and 15:50 share a block shape and are ten minutes of real class time apart), so an
+  // arbitrary pick could hand a student a strictly worse week with the better one hidden
+  // inside the rung. Sorting by `compare` up front is what prevents that.
+  const members = [140, 100, 175, 120].map((total, i) =>
+    solution(total, [event(`AA/0${i}`, [slot('Po', 480, 590)])], { AA: `AA/0${i}` }),
+  );
+
+  it('yields the best member for every seed, whatever order the pool arrived in', () => {
+    for (const seed of ['AAAA-2222', 'BBBB-3333', 'CCCC-4444', 'DDDD-5555']) {
+      // A score-first comparator with a seeded tie-break, exactly like the solver's own.
+      const compare = (a: Solution, b: Solution) =>
+        a.score.total - b.score.total ||
+        unitFrom(seed, 'rank', assignmentKey(a.assignment)) - unitFrom(seed, 'rank', assignmentKey(b.assignment));
+      const shuffled = [...members].sort(
+        (a, b) => unitFrom(seed, 'shuffle', assignmentKey(a.assignment)) - unitFrom(seed, 'shuffle', assignmentKey(b.assignment)),
+      );
+      expect(selectDiverse(shuffled, 1, compare)[0]!.score.total).toBe(100);
+    }
   });
 });
 

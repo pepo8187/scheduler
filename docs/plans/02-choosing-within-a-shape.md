@@ -1,7 +1,7 @@
 # Plan 2 — Choosing within a shape
 
-**Status:** not started. **Depends on Plan 1** (`01-distinct-shapes.md`) for
-`blockShapeKey` and the shape-aware alternatives strip. Do not start this first.
+**Status:** **done.** All five steps landed; what shipped and where it differs from this plan is
+recorded at the end under *What shipped*. Depended on Plan 1 (`01-distinct-shapes.md`), also done.
 
 **Scope:** the interactive half — letting a user see what else could occupy a slot and act on
 it. Adds new selection state, which Plan 1 deliberately does not.
@@ -164,3 +164,57 @@ give it its own commit.
   people do care who teaches, which is mild evidence for it.
 - **Interaction with variety.** `pickVariety` marks a rung as the seed's pick. A pinned choice
   overrides that entirely; make sure the two do not both claim to have chosen the week.
+
+---
+
+## What shipped
+
+All five steps, in the order written, one commit each. Where the plan left a decision open or
+where measurement contradicted it:
+
+- **`pinned` is not quite "no domain variable, exactly like a reclassified seminar".** It is no
+  domain variable — correct as written — but it stays a **seminar** rather than becoming
+  lecture-like, because a collision a pinned group causes must be charged as a seminar collision
+  rather than quietly exempted the way a lecture↔lecture overlap is. It also joins the
+  forward-checking list, which the plan did not call for and which is free: every other subject
+  now prunes against the pinned group before the DFS starts.
+- **"Pins are costing you N points" is a lower bound, not the figure.** The plan asked for the
+  honest number, which needs a second full search with pins ignored. Measured before building
+  it: on podzim22 that baseline solve takes **14.8 s against the real solve's 14.6 s** — the
+  branch-and-bound bound is collision-dominated, so even `topK: 1` prunes nothing extra. The
+  ratio is the finding; **both numbers are vitest on a shared CI container** and overstate what a
+  user sees by roughly 5×. In a real browser on a laptop the same solve is about 3 s, so the
+  honest reading is "showing the exact cost doubles every solve while a pin is set, 3 s to 6 s".
+  That is a genuine trade rather than an obvious one, and it should be revisited.
+  `pinRelief` asks the cheap local question instead — is one of this subject's own siblings
+  better right now? — which is already computed for the ghost hovers and is a true floor on what
+  un-pinning would recover. The line says "at least" for that reason.
+- **No separate "clear pins" affordance.** With at most one pin per subject, clicking the pinned
+  row's 📌 is the un-pin, so a second control would have had nothing to do.
+- **Un-pinning is not available from the grid.** A ghost click pins; a pinned block does not
+  un-pin on click. Blocks have no other click meaning, so an accidental click on a thin ghost is
+  nearly always deliberate, while one on a full-size block would silently undo a choice. The
+  pinned block's tooltip points at the sidebar.
+- **Hard constraints overrule a pin without deleting it.** The plan asked for the diagnostic;
+  the surrounding rule is that switching a group off, filtering it away or reclassifying it
+  *does* un-pin (the pin is then a statement about nothing), while a day off or the lunch block
+  does not — those are often temporary, and the pin should return when they lift.
+- **Ghost strips grew from 8px to 10px** once they became buttons. Fine as decoration, not a
+  target anyone can hit.
+- **Measured variant availability** (five subjects, neutral preferences): 7 of 10 rungs on
+  podzim22 hide a swap, including a five-subject cycle; 4 of 10 on podzim23; **none on
+  podzim24**. Every variant scores identically to its rung, as predicted.
+
+Open risks from above, as they stand now:
+
+- **Ghost row density** was not a problem in practice once the strips were ranked and the
+  hopeless ones faded — but this has not been looked at with VB035's 44 groups all enabled on a
+  small screen.
+- **"Is a permutation actually interesting to a student?"** is still unanswered; it wants a real
+  user, not a measurement. The step is cheap and self-contained enough to remove if the answer
+  is no.
+- **The variant list is bounded by the search pool**, so an empty list means "none among the
+  candidates kept", not "none". Widening the pool for its sake was not attempted — the pool
+  costs search time, and podzim22 is already slow.
+- **Pinning vs. variety** does not double-claim: `pickVariety` still marks a rung, and a pinned
+  subject simply has one value in every rung, so there is nothing for the two to disagree about.

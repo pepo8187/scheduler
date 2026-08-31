@@ -3,16 +3,27 @@ import { eventsOverlap } from './overlap';
 import { asLecture } from './reclassify';
 import { hashString, mulberry32, pickFrom, unitFrom } from './random';
 import { resolveAssignment, scoreResolved } from './score';
+import { blockShapeKey, dayLoadKey } from './shape';
+import { collectVariants } from './variants';
 import { assignmentKey, pickVariety, selectDiverse, varietyTolerance, type VarietyPick } from './variety';
 import type { Assignment, CourseEvent, Day, LunchPrefs, Prefs, Selection, Solution, Timetable } from './types';
 
 /**
- * How much wider than `topK` the internal candidate pool grows once Variety is on. The band has
- * to be searched before it can be chosen from, and the strict top ten of a real timetable is
- * routinely ten permutations of one week. A search parameter, not a scoring constant, so it
- * stays here rather than in the Advanced panel.
+ * How much wider than `topK` the internal candidate pool grows.
+ *
+ * The strip cannot show ten different weeks unless the search kept more than ten candidates:
+ * the strict top ten of a real timetable is routinely ten spellings of one week, so deduping it
+ * to distinct shapes would leave rungs empty. Variety needs the same headroom for a different
+ * reason — its band has to be searched before it can be chosen from — which is why one factor
+ * now serves both, applied unconditionally rather than only when the slider is up.
+ *
+ * The cost is a weaker branch-and-bound bound, since the bound is compared against the worst of
+ * the *pool* rather than the worst of the top ten. Measured on the performance guard's heavy
+ * semester (5 subjects, 15–35 groups each) it is a fraction of a second either way, and every
+ * real export is far smaller. A search parameter, not a scoring constant, so it stays here
+ * rather than in the Advanced panel.
  */
-const VARIETY_POOL_FACTOR = 4;
+const POOL_FACTOR = 4;
 
 export interface SolveOptions {
   /** How many best solutions to keep for the alternatives strip. */
@@ -53,6 +64,12 @@ export interface SolveResult {
    * collapse otherwise hides perfectly good alternatives from the user entirely.
    */
   interchangeable: InterchangeableGroup[];
+  /**
+   * Aligned with `solutions`: the other labellings of each rung's week that the shape dedupe
+   * collapsed into it. Same blocks, same score, different subjects in them — see
+   * `domain/variants.ts`. Empty for a rung that hides nothing.
+   */
+  variants: Solution[][];
 }
 
 interface VariableValue {
@@ -121,6 +138,39 @@ function fixedLectures(timetable: Timetable, selection: Selection, dropped: Set<
 }
 
 /**
+ * The groups the user pinned, as fixed input — one per subject, only where the pin is real.
+ *
+ * A pin says "I want *this* group", as opposed to `seminars`, which only says which groups the
+ * solver may consider. Four things disqualify a pin, and all four are silent here rather than
+ * an error: the group is switched off, it was reclassified as a lecture (there is no group
+ * choice left to pin), the subject is off, or a **hard constraint forbids it** — a day off or
+ * the lunch block. That last one is the important one. A pin cannot beat a hard constraint, so
+ * it loses; producing an infeasible week instead would be worse, and quietly dropping it
+ * without saying so would be worse still, which is what `analyzePins` in `analysis.ts` is for.
+ */
+export function derivePinnedGroups(
+  timetable: Timetable,
+  selection: Selection,
+  daysOff: Day[],
+  lunch: LunchPrefs,
+): Map<string, CourseEvent> {
+  const pinned = new Map<string, CourseEvent>();
+  for (const subject of timetable.subjects) {
+    const subjectSelection = selection[subject.code];
+    if (!subjectSelection?.enabled) continue;
+    const group = subject.seminars.find(
+      (s) =>
+        subjectSelection.pinned?.[s.id] &&
+        subjectSelection.seminars[s.id] &&
+        !subjectSelection.reclassified[s.id] &&
+        !s.slots.some((slot) => daysOff.includes(slot.day) || slotDuringLunch(slot, lunch)),
+    );
+    if (group) pinned.set(subject.code, group);
+  }
+  return pinned;
+}
+
+/**
  * Same day/time/parity signature for every slot, order-independent — groups sharing one are
  * interchangeable for search purposes (the score never looks at who teaches a group).
  *
@@ -171,6 +221,7 @@ function buildVariables(
   daysOff: Day[],
   lunch: LunchPrefs,
   fixed: CourseEvent[],
+  pinned: Map<string, CourseEvent>,
   seed: string,
 ): BuiltVariables {
   const variables: Variable[] = [];
@@ -178,6 +229,10 @@ function buildVariables(
   for (const subject of timetable.subjects) {
     const subjectSelection = selection[subject.code];
     if (!subjectSelection?.enabled || subject.seminars.length === 0) continue;
+    // A pinned subject is not a decision any more. It contributes no variable, no collapsed
+    // set (there is nothing to draw a representative from) and no branching — it is already in
+    // `fixed`, so every other subject forward-checks against it like a lecture.
+    if (pinned.has(subject.code)) continue;
 
     const enabledGroups = subject.seminars.filter(
       (s) => subjectSelection.seminars[s.id] && !subjectSelection.reclassified[s.id],
@@ -300,8 +355,12 @@ function insertRanked(
   if (best.length > limit) best.length = limit;
 }
 
-function randomChoiceOf(variables: Variable[], random: () => number): Record<string, string | null> {
-  const choice: Record<string, string | null> = {};
+function randomChoiceOf(
+  variables: Variable[],
+  base: Record<string, string | null>,
+  random: () => number,
+): Record<string, string | null> {
+  const choice: Record<string, string | null> = { ...base };
   for (const variable of variables) {
     const value = variable.domain[Math.floor(random() * variable.domain.length)]!;
     choice[variable.subjectCode] = value.event?.id ?? null;
@@ -318,10 +377,11 @@ function randomizedFallback(
   best: Solution[],
   limit: number,
   compare: (a: Solution, b: Solution) => number,
+  base: Record<string, string | null>,
   random: () => number,
   iterations: number,
 ): void {
-  let current = randomChoiceOf(variables, random);
+  let current = randomChoiceOf(variables, base, random);
   let currentSolution = buildSolution(timetable, selection, prefs, droppedLectures, current);
   insertRanked(best, currentSolution, limit, compare);
 
@@ -339,7 +399,7 @@ function randomizedFallback(
       currentSolution = candidateSolution;
     } else if (random() < 0.02) {
       // Occasional restart so the walk doesn't get stuck in a local optimum.
-      current = randomChoiceOf(variables, random);
+      current = randomChoiceOf(variables, base, random);
       currentSolution = buildSolution(timetable, selection, prefs, droppedLectures, current);
       insertRanked(best, currentSolution, limit, compare);
     }
@@ -383,15 +443,29 @@ export function solve(timetable: Timetable, selection: Selection, prefs: Prefs, 
   const compare = makeCompareSolutions(seed);
 
   const droppedLectures = deriveDroppedLectures(timetable, selection, prefs.daysOff);
-  const fixed = fixedLectures(timetable, selection, droppedLectures);
-  const { variables, interchangeable } = buildVariables(timetable, selection, prefs.daysOff, prefs.lunch, fixed, seed);
+  // Pinned groups are the user's own choices, so they leave the search entirely: no variable,
+  // and — since they are as fixed as a lecture from here on — they join the forward-checking
+  // list, which lets every other subject prune against them before the DFS starts.
+  const pinned = derivePinnedGroups(timetable, selection, prefs.daysOff, prefs.lunch);
+  const pinnedChoice: Record<string, string | null> = {};
+  for (const [code, group] of pinned) pinnedChoice[code] = group.id;
+  const fixed = [...fixedLectures(timetable, selection, droppedLectures), ...pinned.values()];
+  const { variables, interchangeable } = buildVariables(
+    timetable,
+    selection,
+    prefs.daysOff,
+    prefs.lunch,
+    fixed,
+    pinned,
+    seed,
+  );
   const droppedLectureCost = droppedLectures.size * prefs.tuning.droppedLecturePerEvent;
 
-  // Variety chooses from a band of near-optimal weeks, so that band has to survive the search
-  // first: widen the pool and let the bound keep anything within tolerance of the worst kept.
-  // Both collapse back to today's behaviour at variety 0.
+  // Both the strip's shape-dedupe and Variety's band need more candidates than the strip shows,
+  // so the pool is widened either way; the tolerance additionally lets the bound keep anything
+  // within the band of the worst kept.
   const tolerance = varietyTolerance(prefs);
-  const poolK = tolerance > 0 ? topK * VARIETY_POOL_FACTOR : topK;
+  const poolK = topK * POOL_FACTOR;
 
   const best: Solution[] = [];
   const chosen: (CourseEvent | null)[] = new Array(variables.length).fill(null);
@@ -407,7 +481,7 @@ export function solve(timetable: Timetable, selection: Selection, prefs: Prefs, 
     }
 
     if (index === variables.length) {
-      const choice: Record<string, string | null> = {};
+      const choice: Record<string, string | null> = { ...pinnedChoice };
       for (let i = 0; i < variables.length; i++) choice[variables[i]!.subjectCode] = chosen[i]?.id ?? null;
       insertRanked(best, buildSolution(timetable, selection, prefs, droppedLectures, choice), poolK, compare);
       return;
@@ -444,13 +518,41 @@ export function solve(timetable: Timetable, selection: Selection, prefs: Prefs, 
 
   if (budgetExceeded) {
     const iterations = Math.min(20_000, Math.max(200, Math.floor(nodeBudget / 100)));
-    randomizedFallback(timetable, selection, prefs, variables, droppedLectures, best, poolK, compare, random, iterations);
+    randomizedFallback(
+      timetable,
+      selection,
+      prefs,
+      variables,
+      droppedLectures,
+      best,
+      poolK,
+      compare,
+      pinnedChoice,
+      random,
+      iterations,
+    );
   }
 
   // The strip stays a truthful ladder — sorted by real score, cheapest first — and variety only
   // decides which rung is put forward. Presenting a re-ordered list instead would have meant
   // showing "#1" above a lower-scoring "#2", and the whole point is that the cost is visible.
-  const solutions = tolerance > 0 ? selectDiverse(best, topK, compare) : best.slice(0, topK);
+  //
+  // Which *candidates* fill the ladder is a separate question, and the answer is no longer "the
+  // strict top ten": those are routinely ten spellings of one week, especially since alternating
+  // -week parity stopped collapsing odd/even twins. Dedupe by week shape, coarse first, so the
+  // rungs differ in something a student can see. This runs for everyone now, not only with
+  // Variety on — a strip nobody can tell apart is useless at every slider position.
+  const shapeKey = (solution: Solution): string => blockShapeKey(solution.events, timetable.hours);
+  const solutions = selectDiverse(best, topK, compare, [(solution) => dayLoadKey(solution.events), shapeKey]);
+  // What the dedupe collapsed, kept rather than discarded: a rung's other labellings are the
+  // one genuinely interesting thing it hides, and they are already in the pool.
+  const variants = collectVariants(best, solutions, shapeKey, compare);
 
-  return { solutions, provenOptimal: !budgetExceeded, variety: pickVariety(solutions, prefs), interchangeable };
+  return {
+    solutions,
+    provenOptimal: !budgetExceeded,
+    variety: pickVariety(solutions, prefs),
+    interchangeable,
+    variants,
+  };
 }
