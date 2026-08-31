@@ -198,8 +198,8 @@ and run one pass per key, then the leftovers. Keep the existing single-key call 
 compact hint of what makes each rung different — the days used, or the differing blocks.
 Keep it small; the strip is a strip. This is also the hook Plan 2 hangs its variant list on.
 
-**5. Docs.** README "Variation" section; a short entry in `docs/PLAN.md` next to the
-alternating-week section, and strike the "Known open item — ties" paragraph there.
+**5. Docs.** README "Variation" section; update `docs/ARCHITECTURE.md` — the alternating-week
+notes in § The objective function, and strike the ties entry from § Known gaps and open work.
 
 ## Tests
 

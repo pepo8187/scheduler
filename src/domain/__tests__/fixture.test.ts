@@ -7,8 +7,7 @@ import { parseSampleXml } from './sample';
  * It pins the two things the rest of the work depends on: the bundled sample
  * export is present and well-formed, and the jsdom environment really does give
  * us the same native DOMParser the browser uses (which is why the parser needs
- * no XML dependency). The real parser tests replace the assertions below in
- * step 2 of docs/PLAN.md.
+ * no XML dependency). The real parser tests live in `parseTimetable.test.ts`.
  */
 
 const loadSample = parseSampleXml;
