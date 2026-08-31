@@ -13,4 +13,6 @@ export interface DayBlockInfo {
    * priced nothing.
    */
   switchCost?: SwitchCost;
+  /** Set on a scheduled block the user pinned: the optimizer is not moving this one. */
+  pinned?: boolean;
 }

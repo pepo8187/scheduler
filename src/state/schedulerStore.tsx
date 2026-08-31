@@ -2,10 +2,12 @@ import { createContext, useContext, useEffect, useMemo, useReducer, useRef, useS
 import {
   analyzeAllDaysOff,
   analyzeLunch,
+  analyzePins,
   findLectureConflicts,
   type DayOffAnalysis,
   type LectureConflict,
   type LunchAnalysis,
+  type PinConflict,
 } from '../domain/analysis';
 import { parseTimetable } from '../domain/parseTimetable';
 import { applyPreset, DEFAULT_PREFS, type PresetId } from '../domain/presets';
@@ -14,7 +16,7 @@ import { DEFAULT_TUNING } from '../domain/score';
 import type { SolveResult } from '../domain/solver';
 import type { SolveRequest, SolveResponse } from '../domain/solver.worker';
 import { applyTeacherChipClick } from '../domain/teacherFilter';
-import type { Day, Prefs, Selection, Timetable, Tuning } from '../domain/types';
+import type { Day, Prefs, Selection, SubjectSelection, Timetable, Tuning } from '../domain/types';
 
 const STORAGE_KEY = 'schedule-optimizer:v1';
 /** Waits for typing/dragging to settle before kicking off a solve — a slider drag fires many
@@ -28,7 +30,7 @@ interface PersistedState {
   prefs: Prefs;
 }
 
-interface State extends PersistedState {
+export interface State extends PersistedState {
   /** Derived from `xml` on load; not persisted directly (rebuilt from `xml` on hydrate). */
   timetable: Timetable | null;
 }
@@ -41,6 +43,7 @@ function buildDefaultSelection(timetable: Timetable): Selection {
       lectures: Object.fromEntries(subject.lectures.map((l) => [l.id, { enabled: true, required: false }])),
       seminars: Object.fromEntries(subject.seminars.map((s) => [s.id, true])),
       reclassified: {},
+      pinned: {},
     };
   }
   return selection;
@@ -65,6 +68,23 @@ const EMPTY_STATE: State = {
   prefs: freshPrefs(''),
 };
 
+/**
+ * Brings a persisted selection up to the current shape.
+ *
+ * Every map added to `SubjectSelection` since a user's last visit is absent from their stored
+ * state — `reclassified` and `pinned` both postdate the first release — and an undefined map is
+ * a crash waiting for the first reader that indexes it. Default them here, once, rather than
+ * making every consumer defensive.
+ */
+export function migrateSelection(persisted: Selection | undefined): Selection {
+  return Object.fromEntries(
+    Object.entries(persisted ?? {}).map(([code, sel]) => [
+      code,
+      { ...sel, reclassified: sel.reclassified ?? {}, pinned: sel.pinned ?? {} },
+    ]),
+  );
+}
+
 function hydrate(): State {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -75,11 +95,7 @@ function hydrate(): State {
       xml: persisted.xml,
       fileName: persisted.fileName ?? null,
       timetable: parseTimetable(persisted.xml),
-      // A subject selection persisted before reclassification existed has no `reclassified`
-      // map — default it to empty rather than leaving it undefined for every reader downstream.
-      selection: Object.fromEntries(
-        Object.entries(persisted.selection ?? {}).map(([code, sel]) => [code, { ...sel, reclassified: sel.reclassified ?? {} }]),
-      ),
+      selection: migrateSelection(persisted.selection),
       // Shallow-merged onto the defaults so a preference added after a user's last visit
       // (e.g. `lunch`, absent from older persisted state) doesn't come back `undefined`.
       // Nested one level deeper than the rest: a persisted `tuning` from before a knob was
@@ -99,7 +115,7 @@ function hydrate(): State {
   }
 }
 
-type Action =
+export type Action =
   | { type: 'LOAD_TIMETABLE'; xml: string; fileName: string | null }
   | { type: 'SET_PREFS'; prefs: Partial<Prefs> }
   | { type: 'SET_TUNING'; tuning: Partial<Tuning> }
@@ -111,6 +127,7 @@ type Action =
   | { type: 'TOGGLE_LECTURE_REQUIRED'; subjectCode: string; lectureId: string }
   | { type: 'TOGGLE_SEMINAR'; subjectCode: string; seminarId: string }
   | { type: 'TOGGLE_SEMINAR_RECLASSIFIED'; subjectCode: string; seminarId: string }
+  | { type: 'TOGGLE_SEMINAR_PINNED'; subjectCode: string; seminarId: string }
   | { type: 'TOGGLE_TEACHER_GROUPS'; subjectCode: string; teacherId: string }
   | { type: 'ENABLE_ALL_SEMINARS'; subjectCode: string }
   | { type: 'DISABLE_ALL_SEMINARS'; subjectCode: string }
@@ -119,7 +136,26 @@ type Action =
   | { type: 'RESET_PREFS' }
   | { type: 'CLEAR' };
 
-function reducer(state: State, action: Action): State {
+/**
+ * Drops any pin whose group is no longer a live candidate.
+ *
+ * A pin says "I want this group" and only means anything while the group is one the solver
+ * could pick: switching it off, filtering it away with a teacher chip, or reclassifying it as
+ * a lecture all make the pin a statement about nothing. Leaving it behind would have it spring
+ * back the next time the group was re-enabled, which is not what anyone asked for. Hard
+ * constraints are deliberately *not* handled here — a day off should not silently delete a pin
+ * the user might want back tomorrow, so the solver ignores it for that solve and `analyzePins`
+ * says so.
+ */
+function prunePins(subject: SubjectSelection): SubjectSelection {
+  const live = Object.fromEntries(
+    Object.entries(subject.pinned).filter(([id, on]) => on && subject.seminars[id] && !subject.reclassified[id]),
+  );
+  return Object.keys(live).length === Object.keys(subject.pinned).length ? subject : { ...subject, pinned: live };
+}
+
+/** Exported for tests: a pure function of state and action, no React involved. */
+export function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'LOAD_TIMETABLE': {
       const timetable = parseTimetable(action.xml);
@@ -199,10 +235,10 @@ function reducer(state: State, action: Action): State {
         ...state,
         selection: {
           ...state.selection,
-          [action.subjectCode]: {
+          [action.subjectCode]: prunePins({
             ...subject,
             seminars: { ...subject.seminars, [action.seminarId]: !subject.seminars[action.seminarId] },
-          },
+          }),
         },
       };
     }
@@ -214,9 +250,34 @@ function reducer(state: State, action: Action): State {
         ...state,
         selection: {
           ...state.selection,
-          [action.subjectCode]: {
+          [action.subjectCode]: prunePins({
             ...subject,
             reclassified: { ...subject.reclassified, [action.seminarId]: !subject.reclassified[action.seminarId] },
+          }),
+        },
+      };
+    }
+
+    /**
+     * At most one pin per subject: pinning a second group replaces the first rather than
+     * accumulating, since a subject only ever attends one. Clicking the pinned group again
+     * un-pins it, which is the whole un-pin affordance — nothing else needs a "clear pins".
+     * A pin implies enabling, so pinning a group the user had switched off switches it back on
+     * rather than creating a pin the solver would immediately have to ignore.
+     */
+    case 'TOGGLE_SEMINAR_PINNED': {
+      const subject = state.selection[action.subjectCode];
+      if (!subject || !(action.seminarId in subject.seminars)) return state;
+      if (subject.reclassified[action.seminarId]) return state; // no group choice left to pin
+      const alreadyPinned = subject.pinned[action.seminarId] ?? false;
+      return {
+        ...state,
+        selection: {
+          ...state.selection,
+          [action.subjectCode]: {
+            ...subject,
+            seminars: alreadyPinned ? subject.seminars : { ...subject.seminars, [action.seminarId]: true },
+            pinned: alreadyPinned ? {} : { [action.seminarId]: true },
           },
         },
       };
@@ -229,7 +290,10 @@ function reducer(state: State, action: Action): State {
       // The rule itself (first click exclusive, the rest additive) lives in the domain so it can
       // be tested without a DOM.
       const seminars = applyTeacherChipClick(timetableSubject.seminars, subjectSelection.seminars, action.teacherId);
-      return { ...state, selection: { ...state.selection, [action.subjectCode]: { ...subjectSelection, seminars } } };
+      return {
+        ...state,
+        selection: { ...state.selection, [action.subjectCode]: prunePins({ ...subjectSelection, seminars }) },
+      };
     }
 
     case 'ENABLE_ALL_SEMINARS': {
@@ -245,7 +309,10 @@ function reducer(state: State, action: Action): State {
       const subjectSelection = state.selection[action.subjectCode];
       if (!timetableSubject || !subjectSelection) return state;
       const seminars = Object.fromEntries(timetableSubject.seminars.map((s) => [s.id, false]));
-      return { ...state, selection: { ...state.selection, [action.subjectCode]: { ...subjectSelection, seminars } } };
+      return {
+        ...state,
+        selection: { ...state.selection, [action.subjectCode]: prunePins({ ...subjectSelection, seminars }) },
+      };
     }
 
     case 'SET_SEED': {
@@ -280,6 +347,7 @@ export interface SchedulerActions {
   toggleLectureRequired: (subjectCode: string, lectureId: string) => void;
   toggleSeminar: (subjectCode: string, seminarId: string) => void;
   toggleSeminarReclassified: (subjectCode: string, seminarId: string) => void;
+  toggleSeminarPinned: (subjectCode: string, seminarId: string) => void;
   toggleTeacherGroups: (subjectCode: string, teacherId: string) => void;
   setSeed: (seed: string) => void;
   rerollSeed: () => void;
@@ -298,6 +366,8 @@ export interface SchedulerContextValue {
   dayOffAnalysis: Record<Day, DayOffAnalysis> | null;
   lectureConflicts: LectureConflict[];
   lunchAnalysis: LunchAnalysis | null;
+  /** Pins a day off or the lunch block has overruled — reported, never silently dropped. */
+  pinConflicts: PinConflict[];
   solveResult: SolveResult | null;
   /** True while a solve is debouncing or running in the worker; the last-known solveResult
    *  stays visible in the meantime rather than flashing blank. */
@@ -339,6 +409,7 @@ export function SchedulerProvider({ children }: { children: ReactNode }) {
       toggleSeminar: (subjectCode, seminarId) => dispatch({ type: 'TOGGLE_SEMINAR', subjectCode, seminarId }),
       toggleSeminarReclassified: (subjectCode, seminarId) =>
         dispatch({ type: 'TOGGLE_SEMINAR_RECLASSIFIED', subjectCode, seminarId }),
+      toggleSeminarPinned: (subjectCode, seminarId) => dispatch({ type: 'TOGGLE_SEMINAR_PINNED', subjectCode, seminarId }),
       toggleTeacherGroups: (subjectCode, teacherId) =>
         dispatch({ type: 'TOGGLE_TEACHER_GROUPS', subjectCode, teacherId }),
       setSeed: (seed) => dispatch({ type: 'SET_SEED', seed }),
@@ -364,6 +435,11 @@ export function SchedulerProvider({ children }: { children: ReactNode }) {
   const lunchAnalysis = useMemo(
     () => (state.timetable ? analyzeLunch(state.timetable, state.selection, state.prefs.lunch) : null),
     [state.timetable, state.selection, state.prefs.lunch],
+  );
+
+  const pinConflicts = useMemo(
+    () => (state.timetable ? analyzePins(state.timetable, state.selection, state.prefs.daysOff, state.prefs.lunch) : []),
+    [state.timetable, state.selection, state.prefs.daysOff, state.prefs.lunch],
   );
 
   const [solveResult, setSolveResult] = useState<SolveResult | null>(null);
@@ -429,6 +505,7 @@ export function SchedulerProvider({ children }: { children: ReactNode }) {
     dayOffAnalysis,
     lectureConflicts,
     lunchAnalysis,
+    pinConflicts,
     solveResult,
     isSolving,
     actions,

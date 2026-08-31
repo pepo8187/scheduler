@@ -26,8 +26,14 @@ export default function SubjectCard({ subject }: SubjectCardProps) {
     // marker a 05 and an 06 at the same time look like a pointless duplicate rather than the
     // two halves of a fortnight.
     const parity = eventParity(seminar);
+    const pinned = subjectSelection.pinned?.[seminar.id] ?? false;
     return (
-      <div key={seminar.id} className={`event-row ${asLecture ? 'event-row--lecture' : 'event-row--seminar'}`}>
+      <div
+        key={seminar.id}
+        className={`event-row ${asLecture ? 'event-row--lecture' : 'event-row--seminar'}${
+          pinned ? ' event-row--pinned' : ''
+        }`}
+      >
         <label className="event-row__checkbox">
           <input
             type="checkbox"
@@ -47,6 +53,22 @@ export default function SubjectCard({ subject }: SubjectCardProps) {
           </span>
           <span className="event-row__teacher">{describeTeachers(seminar)}</span>
         </div>
+        {/* Pinning only means something while there is a group choice to make: a reclassified
+            group is attended anyway, so it has nothing to be chosen over. */}
+        {!asLecture && (
+          <button
+            type="button"
+            className={`pin-toggle${pinned ? ' pin-toggle--on' : ''}`}
+            onClick={() => actions.toggleSeminarPinned(subject.code, seminar.id)}
+            title={
+              pinned
+                ? 'You chose this group — click to hand the choice back to the optimizer'
+                : 'Choose this group: the optimizer stops moving this subject'
+            }
+          >
+            📌
+          </button>
+        )}
         <button
           type="button"
           className={`reclassify-toggle${asLecture ? ' reclassify-toggle--on' : ''}`}

@@ -91,3 +91,47 @@ export function switchCosts(
 
   return costs;
 }
+
+/** A pinned subject whose own siblings hold something better. */
+export interface PinRelief {
+  subjectCode: string;
+  /** The sibling group that would score better. */
+  groupId: string;
+  /** Points the week would gain back by taking it — always > 0. */
+  saves: number;
+}
+
+/**
+ * What the user's pins are costing them, priced without a second solve.
+ *
+ * Pinning fights the optimizer by design, and a student who pins three groups can end up with a
+ * much worse week and no idea which pin did it. The exact answer — best-with-pins minus
+ * best-without — needs a whole extra search, and on the heaviest real export that doubles a
+ * fifteen-second solve for a number shown in one line. Measured, not assumed: the bound is
+ * dominated by collisions, so even a `topK: 1` baseline solve came back in 14.8 s against the
+ * real one's 14.6 s.
+ *
+ * So this asks the cheap, local question instead: for each pinned subject, is one of its own
+ * siblings strictly better *right now*? That is already computed — it is a `switchCosts` entry —
+ * and it is a genuine **lower bound** on the pin's cost, since freeing the subject entirely can
+ * only do better than this one swap. The UI must say "at least", because it is a floor and not
+ * the whole story: un-pinning also lets every other subject move.
+ */
+export function pinRelief(selection: Selection, costs: Map<string, SwitchCost>): PinRelief[] {
+  const relief: PinRelief[] = [];
+  for (const [subjectCode, subjectSelection] of Object.entries(selection)) {
+    if (!subjectSelection.enabled) continue;
+    const pinnedHere = Object.entries(subjectSelection.pinned ?? {}).some(
+      ([id, on]) => on && subjectSelection.seminars[id] && !subjectSelection.reclassified[id],
+    );
+    if (!pinnedHere) continue;
+
+    let best: SwitchCost | undefined;
+    for (const cost of costs.values()) {
+      if (cost.subjectCode !== subjectCode || cost.collides || cost.delta >= 0) continue;
+      if (!best || cost.delta < best.delta) best = cost;
+    }
+    if (best) relief.push({ subjectCode, groupId: best.groupId, saves: -best.delta });
+  }
+  return relief.sort((a, b) => b.saves - a.saves || a.subjectCode.localeCompare(b.subjectCode));
+}

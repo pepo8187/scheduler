@@ -107,6 +107,7 @@ describe('variants on a real export', () => {
       lectures: Object.fromEntries(subj.lectures.map((l) => [l.id, { enabled: true, required: false }])),
       seminars: Object.fromEntries(subj.seminars.map((s) => [s.id, true])),
       reclassified: {},
+      pinned: {},
     };
   }
   const prefs: Prefs = { ...DEFAULT_PREFS, seed: 'AAAA-2222' };

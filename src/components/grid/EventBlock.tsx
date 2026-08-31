@@ -17,6 +17,8 @@ interface EventBlockProps {
   ghost?: boolean;
   /** Ghosts only: what taking this group would cost, priced by `WeekGrid`. */
   switchCost?: SwitchCost;
+  /** Scheduled blocks only: the user chose this group, so the optimizer left it alone. */
+  pinned?: boolean;
 }
 
 export default function EventBlock({
@@ -30,6 +32,7 @@ export default function EventBlock({
   collisionKind,
   ghost,
   switchCost,
+  pinned,
 }: EventBlockProps) {
   const total = maxHour - minHour;
   const left = ((slot.start - minHour) / total) * 100;
@@ -45,6 +48,7 @@ export default function EventBlock({
     // A ghost row can run to dozens of strips. Ranking them by what they'd cost is what makes
     // it readable: the free swaps stand out, the ones that would collide recede.
     ghost && switchCost && `event-block--ghost-${switchTier(switchCost)}`,
+    pinned && 'event-block--pinned',
   ]
     .filter(Boolean)
     .join(' ');
@@ -66,6 +70,11 @@ export default function EventBlock({
     >
       {!ghost && (
         <>
+          {pinned && (
+            <span className="event-block__pin" title="You pinned this group — the optimizer is leaving it alone">
+              📌
+            </span>
+          )}
           {collisionKind && (
             <span className="event-block__warning" aria-hidden="true">
               ⚠

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import FileDrop from './components/FileDrop';
 import PreferencePanel from './components/prefs/PreferencePanel';
 import WeekGrid from './components/grid/WeekGrid';
@@ -6,12 +6,14 @@ import AlternativesBar from './components/results/AlternativesBar';
 import DiagnosticsPanel from './components/results/DiagnosticsPanel';
 import AdvancedPanel from './components/prefs/AdvancedPanel';
 import GapExplainer from './components/results/GapExplainer';
+import PinStatus from './components/results/PinStatus';
 import ScoreBreakdown from './components/results/ScoreBreakdown';
 import ShapeVariants from './components/results/ShapeVariants';
 import VarietyExplainer from './components/results/VarietyExplainer';
 import VarietyStatus from './components/results/VarietyStatus';
 import SubjectList from './components/sidebar/SubjectList';
 import ThemeToggle from './components/ThemeToggle';
+import { pinRelief, switchCosts, type SwitchCost } from './domain/switching';
 import { useScheduler } from './state/schedulerStore';
 
 export default function App() {
@@ -22,6 +24,7 @@ export default function App() {
     dayOffAnalysis,
     lectureConflicts,
     lunchAnalysis,
+    pinConflicts,
     solveResult,
     isSolving,
     actions,
@@ -43,6 +46,17 @@ export default function App() {
   // grid and changes nothing about the ladder it came from.
   const variants = solveResult?.variants[selectedIndex] ?? [];
   const solution = (selectedVariant === null ? null : variants[selectedVariant]) ?? base;
+
+  /**
+   * What every unchosen group would cost, priced once per solve rather than per hover. Lives
+   * here rather than in `WeekGrid` because two surfaces need it: the ghost blocks on the grid,
+   * and the line that tells the user what their pins are costing.
+   */
+  const costs = useMemo<Map<string, SwitchCost>>(
+    () => (timetable && solution ? switchCosts(timetable, selection, prefs, solution) : new Map()),
+    [timetable, selection, prefs, solution],
+  );
+  const relief = useMemo(() => pinRelief(selection, costs), [selection, costs]);
 
   const selectRung = (index: number) => {
     setSelectedIndex(index);
@@ -106,12 +120,14 @@ export default function App() {
               )}
               <VarietyStatus result={solveResult} prefs={prefs} selectedIndex={selectedIndex} />
               {solution && <ScoreBreakdown score={solution.score} />}
+              <PinStatus relief={relief} />
               <DiagnosticsPanel
                 solution={solution}
                 lectureConflicts={lectureConflicts}
                 dayOffAnalysis={dayOffAnalysis}
                 daysOff={prefs.daysOff}
                 lunchAnalysis={lunchAnalysis}
+                pinConflicts={pinConflicts}
               />
             </section>
           )}
@@ -119,7 +135,7 @@ export default function App() {
           <section className="panel panel--grow">
             <h2 className="panel__title">Week</h2>
             {timetable ? (
-              <WeekGrid timetable={timetable} selection={selection} prefs={prefs} solution={solution} />
+              <WeekGrid timetable={timetable} selection={selection} solution={solution} costs={costs} />
             ) : (
               <p className="placeholder">The week grid renders here.</p>
             )}

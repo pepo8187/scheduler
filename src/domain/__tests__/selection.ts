@@ -9,6 +9,7 @@ export function buildFullSelection(timetable: Timetable): Selection {
       lectures: Object.fromEntries(subject.lectures.map((l) => [l.id, { enabled: true, required: false }])),
       seminars: Object.fromEntries(subject.seminars.map((s) => [s.id, true])),
       reclassified: {},
+      pinned: {},
     };
   }
   return selection;
