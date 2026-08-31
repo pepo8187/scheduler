@@ -106,10 +106,16 @@ export interface PinRelief {
  *
  * Pinning fights the optimizer by design, and a student who pins three groups can end up with a
  * much worse week and no idea which pin did it. The exact answer — best-with-pins minus
- * best-without — needs a whole extra search, and on the heaviest real export that doubles a
- * fifteen-second solve for a number shown in one line. Measured, not assumed: the bound is
- * dominated by collisions, so even a `topK: 1` baseline solve came back in 14.8 s against the
- * real one's 14.6 s.
+ * best-without — needs a whole extra search, which is why this asks a cheaper question instead.
+ *
+ * **That trade has moved and is worth re-opening.** The original measurement was 14.8 s for a
+ * `topK: 1` baseline against 14.6 s for the real solve: a second search cost what the first did,
+ * so showing the exact figure roughly doubled every solve while a pin was set. Since the ledger
+ * (`domain/ledger.ts`) both are an order of magnitude cheaper, and the baseline is now the
+ * cheaper of the two — a tighter pool makes the leaf's early-exit bite harder — so on podzim2022
+ * with two groups pinned it is ~7 ms on top of a ~29 ms solve, nearer a quarter than a double.
+ * The floor below stays for now because it is genuinely free (every number it needs is already a
+ * `switchCosts` entry), not because the exact answer is still unaffordable.
  *
  * So this asks the cheap, local question instead: for each pinned subject, is one of its own
  * siblings strictly better *right now*? That is already computed — it is a `switchCosts` entry —

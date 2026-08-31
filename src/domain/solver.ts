@@ -1,12 +1,23 @@
+import { createLedger } from './ledger';
 import { slotDuringLunch } from './lunch';
-import { eventsOverlap } from './overlap';
+import { eventsOverlap, type Overlap } from './overlap';
 import { asLecture } from './reclassify';
 import { hashString, mulberry32, pickFrom, unitFrom } from './random';
 import { resolveAssignment, scoreResolved } from './score';
 import { blockShapeKey, dayLoadKey } from './shape';
 import { collectVariants } from './variants';
 import { assignmentKey, pickVariety, selectDiverse, varietyTolerance, type VarietyPick } from './variety';
-import type { Assignment, CourseEvent, Day, LunchPrefs, Prefs, Selection, Solution, Timetable } from './types';
+import type {
+  Assignment,
+  CourseEvent,
+  Day,
+  LunchPrefs,
+  Prefs,
+  ScoreTerm,
+  Selection,
+  Solution,
+  Timetable,
+} from './types';
 
 /**
  * How much wider than `topK` the internal candidate pool grows.
@@ -24,6 +35,87 @@ import type { Assignment, CourseEvent, Day, LunchPrefs, Prefs, Selection, Soluti
  * rather than in the Advanced panel.
  */
 const POOL_FACTOR = 4;
+
+/**
+ * How fine a grid search-time totals are rounded onto before candidates are ranked against
+ * each other.
+ *
+ * The ledger reaches the same total as `scoreResolved` by a different route — per day rather
+ * than per term — so two spellings of one genuinely equal-cost week can come out a couple of
+ * ulps apart. Left alone, `makeCompareSolutions`' `a.score.total !== b.score.total` would treat
+ * a difference of 1e-13 points as a real preference and rank on it, silently overriding the
+ * seeded jitter that exists precisely to spread equal-cost weeks across a cohort. Rounding to a
+ * millionth of a point collapses that noise and lets the intended tie-break do its job; every
+ * weight in `DEFAULT_TUNING` is at least four orders of magnitude coarser, so nothing a student
+ * could notice is ever rounded away.
+ */
+const COMPARE_GRID = 1e6;
+
+function quantize(total: number): number {
+  return Math.round(total * COMPARE_GRID) / COMPARE_GRID;
+}
+
+/**
+ * Shared placeholders for the pool's search-time solutions. Both are replaced with real data by
+ * the re-scoring pass at the end of `solve`, and nothing reads them before then — but a leaf
+ * that allocated two throwaway arrays would allocate 1.7 million of them on a first-semester
+ * export.
+ */
+const NO_OVERLAPS: Overlap[] = [];
+const NO_TERMS: ScoreTerm[] = [];
+
+/**
+ * Above this the candidate-collision matrix is skipped and the DFS falls back to calling
+ * `eventsOverlap` per pair. Nothing near a real export comes close — podzim22's five searched
+ * subjects need under 2 kB — but the matrix is quadratic in the total candidate count, and a
+ * pathological import should degrade to the old behaviour rather than to an allocation failure.
+ */
+const OVERLAP_MATRIX_BUDGET_BYTES = 8 * 1024 * 1024;
+
+/**
+ * Every candidate-against-candidate collision, resolved once before the search starts.
+ *
+ * `buildVariables` already hoists collisions against the *fixed* events out of the DFS. This is
+ * the same trick for the other half: a value's collisions against the values chosen above it in
+ * the tree, which the search otherwise rediscovers with `eventsOverlap` at every node — close to
+ * five million calls on the podzim22 export. Domains are fixed for the whole solve, so the
+ * answer is a lookup rather than a slot-by-slot comparison.
+ *
+ * Worth being precise about when this pays: against the original solver it was worth about 3%,
+ * because leaf evaluation dwarfed everything the search itself did. Once the leaf is scored
+ * incrementally that ratio inverts and the same table is worth roughly a fifth of the remaining
+ * time. It is an optimisation of the search, and only matters once the search is what's left.
+ *
+ * Indexed `[i][j][a * |domain(j)| + b]` for `j < i`, since the DFS only ever looks upward.
+ */
+function buildOverlapMatrix(variables: Variable[]): Uint8Array[][] | null {
+  let bytes = 0;
+  for (let i = 0; i < variables.length; i++) {
+    for (let j = 0; j < i; j++) bytes += variables[i]!.domain.length * variables[j]!.domain.length;
+  }
+  if (bytes > OVERLAP_MATRIX_BUDGET_BYTES) return null;
+
+  const matrix: Uint8Array[][] = [];
+  for (let i = 0; i < variables.length; i++) {
+    const row: Uint8Array[] = [];
+    const domainA = variables[i]!.domain;
+    for (let j = 0; j < i; j++) {
+      const domainB = variables[j]!.domain;
+      const pairs = new Uint8Array(domainA.length * domainB.length);
+      for (let a = 0; a < domainA.length; a++) {
+        const eventA = domainA[a]!.event;
+        if (!eventA) continue;
+        for (let b = 0; b < domainB.length; b++) {
+          const eventB = domainB[b]!.event;
+          if (eventB && eventsOverlap(eventA, eventB)) pairs[a * domainB.length + b] = 1;
+        }
+      }
+      row.push(pairs);
+    }
+    matrix.push(row);
+  }
+  return matrix;
+}
 
 export interface SolveOptions {
   /** How many best solutions to keep for the alternatives strip. */
@@ -444,6 +536,21 @@ function randomizedFallback(
  * worst-of-top-K can be skipped outright — and because seminarCollisionPerPair dwarfs every
  * comfort weight, a single stray collision is usually enough to prune a whole subtree.
  *
+ * **The bound is about collisions, and almost nothing else.** Measured on the podzim22 export,
+ * 1,060,259 of 1,060,262 complete assignments are collision-free, so `total` is 0 at nearly
+ * every leaf and the test above reduces to "does this branch already carry a clash". That
+ * prunes the clashing tenth of the tree outright and cannot touch the rest — which is why the
+ * search still visits ~850,000 leaves for ten answers, and why the thing worth optimising was
+ * never the pruning but the cost of a leaf. Scoring one used to mean rebuilding the whole week
+ * from the assignment (`resolveAssignment` + `scoreResolved`, 7.4 µs) and accounted for 97% of
+ * a 7.7-second solve; the ledger keeps that week alive across the search instead, so a leaf
+ * reads a number the descent already accumulated. Same answers, ~11× less time.
+ *
+ * An admissible *comfort* bound was tried and is not here on purpose: bounding how much the
+ * unassigned subjects can still claw back off the sparse-day term cuts 88% of the leaves and
+ * makes the solver slower, because evaluating the bound costs about what the ledger's leaf now
+ * costs. Cheap leaves and hard pruning are substitutes here, not complements.
+ *
  * For the documented scale (tens of combinations for a normal semester) this always
  * completes well under the node budget and the result is provably optimal; past the budget
  * it falls back to randomised local search and is labelled "best found — not proven
@@ -492,6 +599,12 @@ export function solve(timetable: Timetable, selection: Selection, prefs: Prefs, 
   const start = now();
   const best: Solution[] = [];
   const chosen: (CourseEvent | null)[] = new Array(variables.length).fill(null);
+  /** Aligned with `chosen`; the domain index of each choice, or -1 for "no seminar". */
+  const chosenIndex: Int32Array = new Int32Array(variables.length).fill(-1);
+  const overlapMatrix = buildOverlapMatrix(variables);
+  // The week the search is standing in, carried down the tree and restored on the way back up
+  // rather than rebuilt from the assignment at every leaf. See `domain/ledger.ts`.
+  const ledger = createLedger(prefs, fixed, droppedLectures.size, variables.length);
   let nodes = 0;
   let budgetExceeded = false;
 
@@ -509,19 +622,56 @@ export function solve(timetable: Timetable, selection: Selection, prefs: Prefs, 
     }
 
     if (index === variables.length) {
+      // The ledger already holds this exact week, so the score is a read of what the descent
+      // accumulated rather than a rebuild. Take the number first and leave immediately if it
+      // cannot make the pool: on the podzim22 export 851,771 of 852,627 leaves are turned away
+      // here, and every one of them would otherwise have allocated a choice map and an event
+      // list on the way to being discarded.
+      const total = quantize(ledger.total(collisionsSoFar));
+      if (best.length >= poolK && total > best[poolK - 1]!.score.total) return;
+
       const choice: Record<string, string | null> = { ...pinnedChoice };
       for (let i = 0; i < variables.length; i++) choice[variables[i]!.subjectCode] = chosen[i]?.id ?? null;
-      insertRanked(best, buildSolution(timetable, selection, prefs, droppedLectures, choice), poolK, compare);
+      // `fixed` plus what the search chose *is* the attended week — the same set
+      // `resolveAssignment` arrives at by walking every subject again. Order differs, which
+      // matters to nobody: the re-scoring pass below replaces this list with the canonical one.
+      const events = fixed.slice();
+      for (let i = 0; i < variables.length; i++) {
+        const event = chosen[i];
+        if (event) events.push(event);
+      }
+      insertRanked(
+        best,
+        {
+          assignment: { seminarChoice: choice, droppedLectures },
+          events,
+          overlaps: NO_OVERLAPS,
+          score: { total, terms: NO_TERMS },
+        },
+        poolK,
+        compare,
+      );
       return;
     }
 
     const variable = variables[index]!;
-    for (const value of variable.domain) {
+    const domain = variable.domain;
+    const matrixRow = overlapMatrix === null ? null : overlapMatrix[index]!;
+    for (let valueIndex = 0; valueIndex < domain.length; valueIndex++) {
+      const value = domain[valueIndex]!;
       let collisions = value.fixedCollisions;
       if (value.event) {
-        for (let j = 0; j < index; j++) {
-          const prior = chosen[j];
-          if (prior && eventsOverlap(prior, value.event)) collisions++;
+        if (matrixRow === null) {
+          for (let j = 0; j < index; j++) {
+            const prior = chosen[j];
+            if (prior && eventsOverlap(prior, value.event)) collisions++;
+          }
+        } else {
+          for (let j = 0; j < index; j++) {
+            const priorIndex = chosenIndex[j]!;
+            if (priorIndex < 0) continue;
+            collisions += matrixRow[j]![valueIndex * variables[j]!.domain.length + priorIndex]!;
+          }
         }
       }
       const total = collisionsSoFar + collisions;
@@ -537,7 +687,10 @@ export function solve(timetable: Timetable, selection: Selection, prefs: Prefs, 
       }
 
       chosen[index] = value.event;
+      chosenIndex[index] = value.event ? valueIndex : -1;
+      if (value.event) ledger.place(value.event, index);
       dfs(index + 1, total);
+      if (value.event) ledger.unplace(index);
       if (budgetExceeded) return;
     }
   }
@@ -561,6 +714,20 @@ export function solve(timetable: Timetable, selection: Selection, prefs: Prefs, 
       fallbackIterations,
     );
   }
+
+  // The pool was ranked on the ledger's totals, which are a search filter and not the score: no
+  // term breakdown, no overlap list, and additions grouped per day rather than per term. Put the
+  // survivors back through the one scorer everything else in the app reads — forty of them, well
+  // under a millisecond — so the strip, the breakdown panel, `variants.ts` and the tests all see
+  // exactly what they saw before any of this was incremental. Re-sorting afterwards matters:
+  // ranking is now on exact totals rather than on the filter's.
+  for (const solution of best) {
+    const resolved = resolveAssignment(timetable, selection, solution.assignment);
+    solution.events = resolved.events;
+    solution.overlaps = resolved.overlaps;
+    solution.score = scoreResolved(prefs, droppedLectures, resolved.events, resolved.overlaps);
+  }
+  best.sort(compare);
 
   // The strip stays a truthful ladder — sorted by real score, cheapest first — and variety only
   // decides which rung is put forward. Presenting a re-ordered list instead would have meant

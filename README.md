@@ -290,8 +290,7 @@ the sidebar, one click un-pins, and they're saved with the rest of your preferen
 Pinning fights the optimizer, by design — so the app says what it is costing you, rather than
 leaving you to wonder why the week got worse. The line under the score names the pin and a
 floor on what un-pinning would win back. A floor, not the exact figure: the precise answer needs
-a whole second search, and on the heaviest real export that doubles a fifteen-second solve for
-one line of text.
+a whole second search, which the app already has everything else it needs without.
 
 A pin never beats a **hard constraint**. Take Friday off and a pinned Friday group has to lose —
 but it loses out loud, in the diagnostics, and the pin comes back when you put Friday back.
@@ -396,10 +395,12 @@ are collapsed to one representative before search even starts — the score neve
 teaches a group. Non-★ lecture drops aren't searched — they're derived directly from which
 days are off, since that is the only thing they're ever used for. The search space for a
 normal semester is small (23,250 combinations for the bundled sample) so this is exhaustive
-and provably optimal in milliseconds; a heavy real semester (tens of groups per subject
-across several subjects, ~10⁷ raw combinations) also finishes proven-optimal, typically in
-well under a second — collision penalties dwarf every comfort preference, so the
-branch-and-bound prunes almost anything that isn't collision-free early. A node-budget guard
+and provably optimal in milliseconds; a first-year semester — the heavy one, and the one whose
+students most need the help — runs to ~10⁷ raw combinations across eight subjects and finishes
+proven-optimal in well under a second. Collision penalties dwarf every comfort preference, so
+branch-and-bound clears anything that isn't collision-free early; almost everything that
+survives is, which is why the search still walks hundreds of thousands of complete weeks and
+why each one is scored from a running per-day tally rather than rebuilt from scratch. A node-budget guard
 falls back to randomised local search on pathological inputs with no exploitable structure at
 all, and that result is labelled "best found — not proven optimal" rather than claiming
 something it can't prove. The solve itself runs in a Web Worker, debounced, so the UI never

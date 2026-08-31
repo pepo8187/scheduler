@@ -315,9 +315,16 @@ function averageWeeks(odd: ScoreTerm[], even: ScoreTerm[]): ScoreTerm[] {
 }
 
 /**
- * Scores an already-resolved assignment. Split out from `computeScore` so the solver's hot
- * loop (which resolves an assignment to check overlaps/forward-checking anyway) never pays
- * for `resolveAssignment` twice per candidate.
+ * Scores an already-resolved assignment. Split out from `computeScore` so a caller holding
+ * events it has already resolved — `switching.ts` pricing a ghost, `solve` re-scoring the
+ * candidates that survived its search — never pays for `resolveAssignment` twice.
+ *
+ * This is the authoritative scorer and the only one that produces `ScoreTerm` details. The
+ * solver's hot loop does *not* call it: at a million candidates a run, rebuilding the day map
+ * and both week views per leaf was 97% of a solve, so the search ranks on an incrementally
+ * maintained copy of the same objective (`domain/ledger.ts`) and comes back here for the forty
+ * candidates that survive. Anything that changes the arithmetic below has to change there too —
+ * `ledger.test.ts` is what holds the two together.
  *
  * **Alternating-week seminars make "the week" two weeks.** Once any chosen group meets only
  * every other week, a single canvas is a lie: an odd-week Friday seminar leaves Friday empty
