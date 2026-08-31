@@ -120,11 +120,20 @@ function fixedLectures(timetable: Timetable, selection: Selection, dropped: Set<
   return events;
 }
 
-/** Same day/time signature for every slot, order-independent — groups sharing one are
- *  interchangeable for search purposes (the score never looks at who teaches a group). */
+/**
+ * Same day/time/parity signature for every slot, order-independent — groups sharing one are
+ * interchangeable for search purposes (the score never looks at who teaches a group).
+ *
+ * Parity belongs in the key. An odd-week group and its even-week twin occupy the same hour
+ * but are emphatically not interchangeable: they collide with different things and are lived
+ * in different weeks. Keying on day/time alone collapsed every such pair into one
+ * representative and hid the other half of the timetable from the search entirely — in the
+ * podzim2022 export, 29 of 49 collapsed sets were mixed-parity, so half of IB015's, PB154's
+ * and VB035's groups were never even considered.
+ */
 function slotSignature(event: CourseEvent): string {
   return event.slots
-    .map((s) => `${s.day}:${s.start}-${s.end}`)
+    .map((s) => `${s.day}:${s.start}-${s.end}${s.parity ? `:${s.parity}` : ''}`)
     .sort()
     .join(',');
 }

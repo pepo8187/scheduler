@@ -17,6 +17,10 @@ export default function Legend() {
         <span className="legend__swatch legend__swatch--ghost" aria-hidden="true" />
         Unselected candidate group
       </span>
+      <span className="legend__item">
+        <span className="legend__swatch legend__swatch--parity" aria-hidden="true" />
+        Alternating weeks — odd / even only
+      </span>
     </div>
   );
 }

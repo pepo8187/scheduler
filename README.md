@@ -71,7 +71,7 @@ purely for layout) → `<slot>` (one class meeting). What matters:
 | `<slot odcas docas>` | Start and end time of a meeting |
 | `<akce><kod>` | The class code — see below |
 | `<mistnosti>` / `<ucitele>` | Rooms and teachers, repeated once per teaching week (de-duplicated on parse) |
-| `<poznamky>` | Notes and irregular-timing dates; shown on hover, ignored by the solver |
+| `<poznamky>` | Notes, referenced by a slot's `<poznamka id>`. Carries **alternating-week** timing — see below |
 | `<nezname>` | Course editions with no fixed slot (e.g. substitute/make-up sessions); listed, never scheduled |
 
 The code tells you what kind of class it is:
@@ -82,6 +82,43 @@ The code tells you what kind of class it is:
 A subject may have both, or only a lecture (`VV028`). The format also allows a subject
 with only seminars and no lecture at all — a language class with several groups, say — the
 bundled sample just doesn't happen to include one.
+
+### Alternating-week seminars
+
+Some seminars meet fortnightly rather than weekly, and the export says so **only in prose**,
+in the note a slot points at:
+
+> `každé liché pondělí 10:00–11:50` — every **odd** Monday
+> `každé sudé pondělí 10:00–11:50` — every **even** Monday
+
+This is why a subject's group list sometimes looks like it has pointless duplicates: in
+podzim2022, IB015/05 and IB015/06 are both Monday 10:00–11:50, because they are the two
+halves of one fortnight. All 18 IB015 groups, 17 of PB154's and all 44 of VB035's work this
+way. Odd/even is a single global cycle — an "odd Monday" and an "odd Thursday" fall in the
+same calendar week — so one flag per slot is enough.
+
+Three things follow, and the app now gets all three right:
+
+- **Opposite weeks never clash.** You can take an odd-week IB015 group and an even-week PB154
+  group in the very same Friday hour. In podzim2022 that turns 60 of 403 cross-subject time
+  overlaps from hard collisions into perfectly good schedules.
+- **Both halves are offered.** Groups that share an hour on opposite weeks are no longer
+  treated as interchangeable duplicates, so neither half is hidden from the search.
+- **The week is scored as two weeks.** Comfort terms are measured over the odd week and the
+  even week separately and averaged. This is what keeps a stacked pair honest: on a single
+  canvas, an odd class and an even class sharing an hour look like one well-filled day and
+  collect roughly 200 points of "barely-used day" credit they haven't earned — you attend one
+  110-minute class each week, not a 220-minute day. Measured week by week, stacking wins only
+  where it genuinely saves a trip: when it hides a fortnightly class inside a day you're
+  already committed to *that same week*.
+
+Anything the parser can't read confidently — a note about overflow rooms, an unfamiliar
+phrasing — falls back to "meets every week". Parity may only ever *remove* a constraint, never
+add one, so the worst case is a clash shown that isn't real, never a promise of no clash that
+turns out to be false. An export with no notes at all (podzim2023) is unaffected end to end.
+
+Fortnightly classes are hatched on the grid and badged `odd` / `even`, in the sidebar group
+list as well as on the week itself; the export's own wording is on hover.
 
 ## The scoring model
 

@@ -48,6 +48,15 @@
   --ok: #5f6f52;
   --ghost-outline: #cfc4b2;
 
+  /* Alternating-week hatching. Laid over a block's own fill rather than replacing it, so a
+     fortnightly seminar still reads as a seminar; the opposite tilt to the clash stripes,
+     which it can legitimately appear alongside. */
+  --parity-hatch: repeating-linear-gradient(
+    -45deg,
+    rgba(58, 46, 36, 0.13) 0 4px,
+    transparent 4px 9px
+  );
+
   /* --- Shape --- */
   --r-lg: 16px;
   --r-md: 12px;
@@ -111,6 +120,11 @@
   --warn-fill: #3a2318;
   --ok: #a8c09a;
   --ghost-outline: #4a3f35;
+  --parity-hatch: repeating-linear-gradient(
+    -45deg,
+    rgba(255, 255, 255, 0.13) 0 4px,
+    transparent 4px 9px
+  );
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.25);
   --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.34), 0 6px 16px rgba(0, 0, 0, 0.3);

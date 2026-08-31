@@ -1,11 +1,20 @@
+import { parityCanCoincide } from './parity';
 import type { CourseEvent, Slot } from './types';
 
 export function intervalsOverlap(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {
   return aStart < bEnd && bStart < aEnd;
 }
 
+/**
+ * Same weekday, overlapping hours — and able to fall in the same week at all.
+ *
+ * That last clause is what makes alternating-week seminars work: an odd-week class and an
+ * even-week class at the same hour on the same day never meet, so they are not a clash and
+ * choosing both is a perfectly good week. A slot with no parity meets every week and so can
+ * still collide with either half. See `domain/parity.ts`.
+ */
 export function slotsOverlap(a: Slot, b: Slot): boolean {
-  return a.day === b.day && intervalsOverlap(a.start, a.end, b.start, b.end);
+  return a.day === b.day && intervalsOverlap(a.start, a.end, b.start, b.end) && parityCanCoincide(a.parity, b.parity);
 }
 
 export function eventsOverlap(a: CourseEvent, b: CourseEvent): boolean {

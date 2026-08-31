@@ -6,6 +6,12 @@ import type { Overlap } from './overlap';
 
 export type Day = 'Po' | 'Út' | 'St' | 'Čt' | 'Pá' | 'So' | 'Ne';
 
+/**
+ * Which half of the fortnight a slot meets in. `undefined` on a Slot means "every week".
+ * Derived from the slot's `<poznamka>` text — see `domain/parity.ts`.
+ */
+export type WeekParity = 'odd' | 'even';
+
 export interface Teacher {
   id: string;
   name: string;
@@ -19,6 +25,8 @@ export interface Slot {
   teachers: Teacher[];
   noteId?: string;
   note?: string;
+  /** Set only for an alternating-week slot; `undefined` means it meets every week. */
+  parity?: WeekParity;
 }
 
 export type EventKind = 'lecture' | 'seminar';
