@@ -1,4 +1,5 @@
 import { describeTeachers, formatMinutes } from '../../domain/format';
+import { describeParity, PARITY_LABEL } from '../../domain/parity';
 import type { CourseEvent, Slot } from '../../domain/types';
 
 export type CollisionKind = 'lecture-lecture' | 'seminar';
@@ -35,6 +36,7 @@ export default function EventBlock({
     event.kind === 'lecture' ? 'event-block--lecture' : 'event-block--seminar',
     collisionKind === 'lecture-lecture' && 'event-block--clash-lecture',
     collisionKind === 'seminar' && 'event-block--clash-seminar',
+    slot.parity && `event-block--${slot.parity}`,
     ghost && 'event-block--ghost',
   ]
     .filter(Boolean)
@@ -42,12 +44,16 @@ export default function EventBlock({
 
   const rooms = slot.rooms.join(', ');
   const teachers = describeTeachers(event);
+  // The note is the export's own wording for an alternating-week slot ("každé liché
+  // pondělí ..."), and is the authority behind the badge — worth showing verbatim on hover.
+  // Rendered as text: a note can carry HTML anchor markup for room links.
+  const cadence = describeParity(slot.parity);
 
   return (
     <div
       className={classNames}
       style={{ left: `${left}%`, width: `${width}%`, top, height }}
-      title={`${event.id} ${subjectName}\n${formatMinutes(slot.start)}-${formatMinutes(slot.end)}${teachers ? `\n${teachers}` : ''}${rooms ? `\n${rooms}` : ''}`}
+      title={`${event.id} ${subjectName}\n${formatMinutes(slot.start)}-${formatMinutes(slot.end)}${cadence ? ` — ${cadence}` : ''}${teachers ? `\n${teachers}` : ''}${rooms ? `\n${rooms}` : ''}${slot.note ? `\n\n${slot.note}` : ''}`}
     >
       {!ghost && (
         <>
@@ -57,6 +63,11 @@ export default function EventBlock({
             </span>
           )}
           <span className="event-block__code">{event.id}</span>
+          {slot.parity && (
+            <span className="event-block__parity" title={cadence}>
+              {PARITY_LABEL[slot.parity]}
+            </span>
+          )}
           <span className="event-block__name">{subjectName}</span>
           {teachers && <span className="event-block__teacher">{teachers}</span>}
           {rooms && <span className="event-block__room">{rooms}</span>}

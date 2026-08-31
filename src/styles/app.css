@@ -172,6 +172,12 @@
   border-left: 1px dashed var(--seminar-accent);
 }
 
+.legend__swatch--parity {
+  background: var(--seminar-fill);
+  border-left-color: var(--seminar-accent);
+  background-image: var(--parity-hatch);
+}
+
 /* --- Buttons & chips (shared) --- */
 
 .button {
@@ -413,6 +419,19 @@
   flex-direction: column;
   min-width: 0;
   line-height: 1.3;
+}
+
+.event-row__parity {
+  margin-left: 6px;
+  padding: 0 4px;
+  border-radius: var(--r-sm);
+  border: 1px solid currentcolor;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--seminar-accent);
+  white-space: nowrap;
 }
 
 .event-row__time {
@@ -1254,6 +1273,39 @@
     rgba(255, 255, 255, 0.15) 0 6px,
     transparent 6px 12px
   );
+}
+
+/* Alternating-week slots. The hatching says "not every week" at a glance, and the badge says
+   which half — the two are always shown together, since a lone hatch can't distinguish an odd
+   group from the even twin sitting in the very same hour. */
+.event-block--odd,
+.event-block--even {
+  background-image: var(--parity-hatch);
+}
+
+.event-block__parity {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  padding: 0 4px;
+  border-radius: var(--r-sm);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--seminar-accent);
+  background: var(--surface);
+  border: 1px solid currentcolor;
+  line-height: 1.4;
+}
+
+/* The collision warning owns the top-right corner; step the badge aside when both show. */
+.event-block__warning + .event-block__parity {
+  right: 20px;
+}
+
+.event-block--ghost .event-block__parity {
+  display: none;
 }
 
 .event-block--ghost {

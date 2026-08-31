@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { describeSlots, describeTeachers } from '../../domain/format';
+import { describeParity, eventParity, PARITY_LABEL } from '../../domain/parity';
 import { isAllCleared, isUnfiltered } from '../../domain/teacherFilter';
 import type { CourseEvent, Subject } from '../../domain/types';
 import { useScheduler } from '../../state/schedulerStore';
@@ -21,6 +22,10 @@ export default function SubjectCard({ subject }: SubjectCardProps) {
   const regularSeminars = subject.seminars.filter((s) => !subjectSelection.reclassified[s.id]);
 
   const renderSeminarRow = (seminar: CourseEvent, asLecture: boolean) => {
+    // An alternating-week group shares its hour with its opposite-parity twin, so without this
+    // marker a 05 and an 06 at the same time look like a pointless duplicate rather than the
+    // two halves of a fortnight.
+    const parity = eventParity(seminar);
     return (
       <div key={seminar.id} className={`event-row ${asLecture ? 'event-row--lecture' : 'event-row--seminar'}`}>
         <label className="event-row__checkbox">
@@ -32,7 +37,14 @@ export default function SubjectCard({ subject }: SubjectCardProps) {
           <span className="event-row__badge event-row__badge--seminar">{seminar.group}</span>
         </label>
         <div className="event-row__detail">
-          <span className="event-row__time">{describeSlots(seminar)}</span>
+          <span className="event-row__time">
+            {describeSlots(seminar)}
+            {parity && (
+              <span className={`event-row__parity event-row__parity--${parity}`} title={describeParity(parity)}>
+                {PARITY_LABEL[parity]}
+              </span>
+            )}
+          </span>
           <span className="event-row__teacher">{describeTeachers(seminar)}</span>
         </div>
         <button

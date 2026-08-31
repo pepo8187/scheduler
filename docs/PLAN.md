@@ -54,10 +54,22 @@ Parsed structure of `<rozvrh>`:
   **Rooms and teachers are repeated once per teaching week (12 identical copies)** — must be
   de-duplicated by id.
 - `<poznamky>` — `id → text` notes with HTML-escaped `<a>` tags and exception dates
-  ("kromě 16. 11."). Shown as tooltips; **not modelled by the solver**. These are the source of
-  the green ✱ marker in the school system, which flags irregular timing (e.g. one week skipped
-  for a state holiday). It has **no bearing on the weekly schedule** — we surface the note text
-  on hover and otherwise ignore it entirely.
+  ("kromě 16. 11."). A slot's `<poznamka id="N" />` is an empty **reference**; the text lives
+  once in this block at the end of the document.
+
+  This was originally written up as having *no bearing on the weekly schedule* — tooltip
+  decoration, nothing more. **That was wrong**, and only looked right because podzim2023, the
+  original sample, contains no notes at all. podzim2022 has 40, and 39 of them carry
+  alternating-week scheduling information the app cannot be correct without:
+
+  > `každé liché pondělí 10:00–11:50` — every **odd** Monday
+  > `každé sudé pondělí 10:00–11:50` — every **even** Monday
+
+  IB015/05 and IB015/06 are not two interchangeable groups at the same hour; they are the two
+  halves of a fortnight. See **Alternating-week seminars (post-launch)** below, the README
+  section of the same name, and `domain/parity.ts`.
+  Notes that aren't about parity (overflow rooms for part of the semester — the one such note
+  carries anchor markup) still get surfaced on hover and are otherwise ignored.
 - `<nezname>` — course editions with no scheduled time (e.g. substitute/make-up sessions,
   state exams, thesis defence). Listed in a tray, never scheduled.
 
@@ -470,7 +482,8 @@ no XML library at runtime). State is `useReducer` + Context; no state-management
 type Day = 'Po' | 'Út' | 'St' | 'Čt' | 'Pá' | 'So' | 'Ne';
 
 interface Slot { day: Day; start: number; end: number;   // minutes from midnight
-                 rooms: string[]; teachers: Teacher[]; noteId?: string; note?: string }
+                 rooms: string[]; teachers: Teacher[]; noteId?: string; note?: string
+                 parity?: 'odd' | 'even' }                // absent = meets every week
 
 interface CourseEvent {          // one enrollable unit
   id: string;                    // "IB111" | "IB111/03"
@@ -656,3 +669,74 @@ alongside it as `public/podzim22-timetable.xml`. The single "Load sample" button
 fetching its own bundled file. `src/domain/__tests__/sample.ts` (the vitest fixture helper)
 was repointed at `public/podzim23-timetable.xml` so the existing fixture-dependent tests keep
 exercising the same podzim23 data as before; podzim22 is not (yet) used as a test fixture.
+
+## Alternating-week seminars (post-launch)
+
+Some seminars meet fortnightly, and the export records it only in the prose of the
+`<poznamky>` note a slot references ("každé liché pondělí" — every odd Monday). The claim was
+verified against podzim2022 before any code was written:
+
+- 40 notes, of which **20 odd / 19 even / 1 not about parity** (an overflow-room note, and the
+  only one carrying anchor markup). 79 of 149 slots carry a note.
+- **Odd/even is one global fortnightly cycle.** Every date listed across every parity note
+  falls in an ISO week of the stated parity, so an "odd Monday" and an "odd Thursday" are the
+  same calendar week. One `'odd' | 'even'` flag per slot is therefore sufficient.
+- **The note agrees with its slot**: all 79 name a weekday and time range matching the slot's
+  own `den`/`odcas`/`docas` exactly. Parity is taken from the note, day and time from the
+  attributes, as before.
+- Twins are **not** guaranteed: PB154 has `/02` and `/04` even-only with no odd partner, and
+  `/13` odd-only. Nothing may assume a group has an opposite-parity counterpart.
+- A secondary corroborating signal exists and is deliberately **not** used: `<mistnost>` is
+  repeated once per actual occurrence (12–13 weekly, 6–7 odd, 5–6 even), so the repeat count
+  betrays a fortnightly slot but cannot say which half. `dedupeById` still collapses it.
+
+What changed:
+
+- `domain/parity.ts` — new. Note parsing (`parseNoteParity`), the coincidence predicate, and
+  the week views. The governing rule is stated there: **parity may only ever remove a
+  constraint, never add one**; anything unreadable falls back to weekly.
+- `slotsOverlap` gained a `parityCanCoincide` clause. One edit, and `eventsOverlap`,
+  `findOverlaps`, the grid's clash badges and the solver's forward check all inherit it. In
+  podzim2022 it reclassifies 60 of 403 cross-subject time overlaps as non-clashes.
+- `slotSignature` gained parity. Keying interchangeability on day/time alone collapsed every
+  odd/even twin into one representative — 29 of 49 collapsed sets in podzim2022 were
+  mixed-parity — hiding half of IB015's, PB154's and VB035's groups from the search entirely.
+  Domains roughly double on a fortnightly export (IB015 9 → 18 representatives); the search
+  stays proven-optimal, ~83 ms for IB015+PB154+VB035.
+- `scoreResolved` measures the comfort terms over each lived week and averages them; the
+  per-pair terms (collisions, dropped lectures) are counted once. Guarded by `hasParity`, so a
+  timetable with nothing fortnightly takes the identical single-week path it always did.
+
+### Why the two-week average, and why nothing else
+
+The averaging is not there to *encourage* stacking an odd and an even class in one hour — it
+is there to stop a false incentive. On a single canvas that pair reads as one 220-minute day
+and collects roughly 200 points of sparse-day credit it has not earned; the student actually
+attends one 110-minute class per week. Measured week by week that phantom bonus disappears.
+
+Three further levers were prototyped against the real export and **rejected**, all measured on
+IB015+PB154+VB035, 12,180 collision-free combinations:
+
+| lever | effect on stacked schedules at the optimum |
+| --- | --- |
+| `gapFreeMinutes: 0` | none (12.1%, unchanged) — opposite-parity classes are never in the same week, so no gap forms between them at any setting |
+| `sparseDayWeight` ×3 | none (12.1%, unchanged) |
+| `sparseDayFullMinutes` 6h | 10.9% — slightly *fewer* |
+| cram measured on the fortnight's footprint | none — minimum footprint is identical for stacked and separated arrangements (3d/3d with lectures, 1d/1d without) |
+
+The reason no reshaping of the per-week terms can work: when stacking saves no trip, the
+stacked and separated arrangements produce **identical per-week day-load profiles** — one
+110-minute day in each week either way, differing only in which weekday it is. No function of
+the per-week profile can tell them apart. Of 20 distinct (odd-profile ‖ even-profile) pairs
+across those 12,180 combinations, only 6 contain both stacked and separated combinations; in
+the other 14 the profiles genuinely differ and the existing terms already discriminate
+correctly. So the score prefers stacking exactly where it hides a fortnightly class inside a
+day already committed to that week, and is honestly indifferent elsewhere.
+
+### Known open item — ties
+
+Un-collapsing the twins leaves many more equal-scoring solutions: under neutral preferences
+1,404 combinations tie at the optimum, collapsing to 159 parity-blind shapes, **every one of
+which has more than one parity variant** (the largest classes run to 48 members). Without a
+parity-blind dedupe on the top-K, the alternatives strip can fill with relabelings of one
+week. Deliberately left unbuilt pending a design decision — see the ties discussion.

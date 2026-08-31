@@ -1,4 +1,5 @@
 import { parseTimeToMinutes } from './format';
+import { parseNoteParity } from './parity';
 import type { CourseEvent, Day, EventKind, Slot, Subject, Teacher, Timetable, UnscheduledCourse } from './types';
 
 /**
@@ -63,7 +64,11 @@ export function parseTimetableDocument(doc: Document): Timetable {
 
     const akce = slotEl.querySelector('akce');
     const kod = childText(akce, 'kod') ?? '';
+    // `<poznamka id="N" />` inside a slot is an empty *reference*; the text lives once in the
+    // document's `<poznamky>` block. Resolving it is what makes the alternating-week parity
+    // readable at all — it is the only place the export records it.
     const noteId = slotEl.querySelector('poznamka')?.getAttribute('id') ?? undefined;
+    const note = noteId ? notes.get(noteId) : undefined;
 
     const slot: Slot = {
       day,
@@ -72,7 +77,8 @@ export function parseTimetableDocument(doc: Document): Timetable {
       rooms,
       teachers: [...teachers.values()],
       noteId,
-      note: noteId ? notes.get(noteId) : undefined,
+      note,
+      parity: parseNoteParity(note),
     };
 
     let raw = rawEvents.get(kod);

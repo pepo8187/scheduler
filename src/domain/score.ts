@@ -1,5 +1,6 @@
 import { DAY_ORDER } from './format';
 import { findOverlaps, type Overlap } from './overlap';
+import { hasParity, weekView } from './parity';
 import { asLecture } from './reclassify';
 import type { Assignment, CourseEvent, Day, Prefs, Score, ScoreTerm, Selection, Slot, Timetable, Tuning } from './types';
 
@@ -288,10 +289,54 @@ function maxPerDayTerm(byDay: Map<Day, Slot[]>, prefs: Prefs): ScoreTerm {
   return { key: 'maxPerDay', label: 'Max classes/day', cost, detail: `${excess} class(es) over cap` };
 }
 
+/** The day-shaped comfort terms, measured over one lived week. */
+function comfortTerms(events: CourseEvent[], prefs: Prefs): ScoreTerm[] {
+  const byDay = daySlots(events);
+  return [
+    compactnessTerm(byDay, prefs),
+    sparseDayTerm(byDay, prefs),
+    gapsTerm(byDay, prefs),
+    dayWindowTerm(events, prefs),
+    maxPerDayTerm(byDay, prefs),
+  ];
+}
+
+/** Mean of the two weeks, term by term; details are merged only where the weeks differ. */
+function averageWeeks(odd: ScoreTerm[], even: ScoreTerm[]): ScoreTerm[] {
+  return odd.map((term, i) => {
+    const other = even[i]!;
+    return {
+      key: term.key,
+      label: term.label,
+      cost: (term.cost + other.cost) / 2,
+      detail: term.detail === other.detail ? term.detail : `odd wk: ${term.detail}; even wk: ${other.detail}`,
+    };
+  });
+}
+
 /**
  * Scores an already-resolved assignment. Split out from `computeScore` so the solver's hot
  * loop (which resolves an assignment to check overlaps/forward-checking anyway) never pays
  * for `resolveAssignment` twice per candidate.
+ *
+ * **Alternating-week seminars make "the week" two weeks.** Once any chosen group meets only
+ * every other week, a single canvas is a lie: an odd-week Friday seminar leaves Friday empty
+ * on even weeks, and an odd-week class stacked on an even-week class at the same hour is one
+ * class per week, not a packed day. So the comfort terms are measured over each lived week
+ * separately and averaged, while collisions and dropped lectures — which are per-pair and
+ * per-event, not per-day — are counted once.
+ *
+ * Averaging is what keeps stacking *honestly* priced rather than merely legal. On a single
+ * canvas an odd/even pair sharing an hour reads as one well-filled day, which at the default
+ * tuning is worth around 200 points of sparse-day charge it has not earned — the schedule is
+ * two half-days, one per fortnight. Measured week by week that phantom bonus disappears, and
+ * stacking wins only where it genuinely saves a trip: when it hides a fortnightly class
+ * inside a day the student is already committed to *that same week*.
+ *
+ * The split costs a second pass over the terms, so it is taken only when something is
+ * actually fortnightly. A timetable with no alternating-week groups — the common case, and
+ * every group in the podzim2023 export — scores through the identical single-week path it
+ * always did.
  */
 export function scoreResolved(
   prefs: Prefs,
@@ -300,7 +345,10 @@ export function scoreResolved(
   overlaps: Overlap[],
 ): Score {
   const seminarOverlaps = overlaps.filter((o) => o.kind === 'seminar');
-  const byDay = daySlots(events);
+
+  const comfort = hasParity(events)
+    ? averageWeeks(comfortTerms(weekView(events, 'odd'), prefs), comfortTerms(weekView(events, 'even'), prefs))
+    : comfortTerms(events, prefs);
 
   const terms: ScoreTerm[] = [
     {
@@ -315,11 +363,7 @@ export function scoreResolved(
       cost: droppedLectures.size * prefs.tuning.droppedLecturePerEvent,
       detail: droppedLectures.size === 0 ? 'none' : `${droppedLectures.size} dropped`,
     },
-    compactnessTerm(byDay, prefs),
-    sparseDayTerm(byDay, prefs),
-    gapsTerm(byDay, prefs),
-    dayWindowTerm(events, prefs),
-    maxPerDayTerm(byDay, prefs),
+    ...comfort,
   ];
 
   return { total: terms.reduce((sum, t) => sum + t.cost, 0), terms };
