@@ -1,4 +1,4 @@
-import { DAY_ORDER } from './format';
+import { DAY_ORDER, formatMinutes } from './format';
 import type { CourseEvent, Day, HourRulerEntry } from './types';
 
 /**
@@ -123,10 +123,33 @@ export function describeShapeDays(events: CourseEvent[]): string {
   return DAY_ORDER.filter((day) => load.has(day)).join(' ');
 }
 
-/** "Po 3h40 · Út 1h50" — the same shape with its per-day loads, for the tooltip. */
+/**
+ * The same shape spelled out, one line per day: how long it runs and when each class starts.
+ *
+ *   Po 3h40 — 08:00, 10:00
+ *   Pá 50m — 14:00
+ *
+ * The day list alone cannot separate every rung the strip shows, and on a heavy export it often
+ * separates none of them: rungs backfilled by `blockShapeKey` routinely use the same four days
+ * for the same minutes and differ only in *when*. Ten rungs reading "Po Út St Čt · 122" is the
+ * same unreadable strip the dedupe set out to fix, one level down. The start times are what is
+ * actually different, so the hover carries them — every rung on the strip differs in this text,
+ * by construction, since `blockShapeKey` is built from exactly these days and times.
+ */
 export function describeShapeLoad(events: CourseEvent[]): string {
   const load = dayLoad(events);
+  const starts = new Map<Day, number[]>();
+  for (const event of events) {
+    for (const slot of event.slots) {
+      const list = starts.get(slot.day);
+      if (list) list.push(slot.start);
+      else starts.set(slot.day, [slot.start]);
+    }
+  }
   return DAY_ORDER.filter((day) => load.has(day))
-    .map((day) => `${day} ${formatDuration(load.get(day)!)}`)
-    .join(' · ');
+    .map((day) => {
+      const times = [...(starts.get(day) ?? [])].sort((a, b) => a - b).map(formatMinutes);
+      return `${day} ${formatDuration(load.get(day)!)} — ${times.join(', ')}`;
+    })
+    .join('\n');
 }

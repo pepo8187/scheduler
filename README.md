@@ -264,6 +264,10 @@ edge — whereas the grid is the one the timetable is literally drawn on. **The 
 for comparison only and never reach the score**: those ten minutes are real class time, and the
 dead-time and barely-used-day terms have to keep charging for them.
 
+Each rung says which days it uses, and hovering one spells out how long each day runs and when
+its classes start — because on a busy semester every rung may well use the same four days, and
+then *when* is the only thing that differs.
+
 Three things the strip still guarantees, unchanged: **#1 is the strict optimum**, the list is
 **sorted by real score**, and every rung is **the best-scoring member of its shape** — never an
 arbitrary one, so a rung can't hide a better week inside it.

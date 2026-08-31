@@ -247,11 +247,15 @@ Built as written, with these decisions taken where the plan left them open:
   distinct day loads on podzim23 but spends its last rungs on visibly worse weeks (100 125 vs
   100 110), which is a worse trade than the extra shape buys. `VARIETY_POOL_FACTOR` was renamed
   `POOL_FACTOR` accordingly.
-- **Step 4 shows the day set**, not the differing blocks: each rung prints "Po Út Pá" with the
-  per-day loads on hover (`describeShapeDays` / `describeShapeLoad`). It is the visible face of
-  `dayLoadKey`, which is the key pass 1 dedupes on, so it is exactly what differs between the
-  rungs at the top of the strip. Rungs backfilled by `blockShapeKey` can repeat a day set —
-  they differ in *when*, not in *whether* — which is what the tooltip is for.
+- **Step 4 shows the day set**, not the differing blocks: each rung prints "Po Út Pá"
+  (`describeShapeDays`). It is the visible face of `dayLoadKey`, which is the key pass 1 dedupes
+  on, so it is exactly what differs between the rungs at the top of the strip.
+  Running the real thing showed that is not enough on its own — this plan's own instruction to
+  "decide with the strip in front of you". On podzim2022 with everything enabled, all ten rungs
+  print "Po Út St Čt · 122": they are backfilled by `blockShapeKey` and use the same days for
+  the same minutes, differing only in *when*. So the hover carries each day's load **and start
+  times**, one line per day, which by construction differs on every rung the strip can show —
+  it is what `blockShapeKey` is built from.
 - **Measured effect**, top ten, neutral preferences, five subjects per export: distinct
   `dayLoadKey`s went 5 → 8 on podzim23 and 2 → 8 on podzim24. On podzim2022 it stays at 3: all
   1 404 optimum-tied combinations there really do use the same three day loads, so the strip

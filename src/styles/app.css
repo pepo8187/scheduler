@@ -1464,6 +1464,12 @@
   font-size: var(--fs-xs);
 }
 
+/* The marker sits in the top-left corner, where the course code starts — indent the code out
+   from under it, the same way the ⚠ badge already shifts the parity chip on the right. */
+.event-block--pinned .event-block__code {
+  padding-left: 15px;
+}
+
 /* Pins fight the optimizer by design; this is the price, stated rather than left to be
    discovered. A floor, not the exact figure — see `domain/switching.ts`. */
 .pin-status {

@@ -158,8 +158,18 @@ describe('describeShapeDays / describeShapeLoad', () => {
     expect(describeShapeDays(events)).toBe('Po Pá');
   });
 
-  it('spells the per-day load out for the tooltip', () => {
-    expect(describeShapeLoad(events)).toBe('Po 3h40 · Pá 50m');
+  it('spells out each day’s load and start times, one line per day', () => {
+    // The times are what separate two rungs that use the same days for the same minutes, which
+    // on a heavy export is most of them.
+    expect(describeShapeLoad(events)).toBe('Po 3h40 — 08:00, 10:00\nPá 50m — 14:00');
+  });
+
+  it('orders the start times within a day, whatever order the events arrived in', () => {
+    const jumbled = [
+      event('AA/01', [slot('Po', '14:00', '15:50')]),
+      event('BB/01', [slot('Po', '8:00', '9:50')]),
+    ];
+    expect(describeShapeLoad(jumbled)).toBe('Po 3h40 — 08:00, 14:00');
   });
 
   it('says nothing about an empty week', () => {

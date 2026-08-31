@@ -613,8 +613,11 @@ class is **its best-scoring member** — free for an exact block shape, but load
 are snapped, since 15:40 and 15:50 share a key and do not share a score. Sorting the pool by
 `compare` before the passes is what guarantees it.
 
-`AlternativesBar` prints the day set on each rung ("Po Út Pá"), with the per-day loads on hover:
-rank and score alone cannot distinguish ten rungs that all read "55".
+`AlternativesBar` prints the day set on each rung ("Po Út Pá"), since rank and score alone cannot
+distinguish ten rungs that all read "55". The day set cannot be the whole story either — on
+podzim2022 with everything enabled all ten rungs read "Po Út St Čt", because they are backfilled
+by `blockShapeKey` and use the same days for the same minutes — so the hover carries each day's
+load *and start times*, which differs on every rung by construction.
 
 ### …and what a rung hides (`variants.ts`)
 

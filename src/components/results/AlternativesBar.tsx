@@ -18,8 +18,13 @@ interface AlternativesBarProps {
  * Each rung also says which days it uses. Rank and score alone made the strip unreadable once
  * the solver started keeping equal-scoring weeks apart: ten rungs marked "#n / 55" invite a
  * click-through-all-ten, and nine of them are usually the same Monday and Tuesday of fixed
- * lectures with one seminar moved. The day line is the shape the strip is now deduped by
- * (`domain/shape.ts`), so it is exactly the thing that differs between rungs.
+ * lectures with one seminar moved. The day line is the coarse shape the strip is deduped by
+ * (`domain/shape.ts`), so it is what differs between the rungs at the top.
+ *
+ * It cannot be the whole story, and on a heavy export it is often none of it: the rungs
+ * backfilled from block shapes use the same days for the same minutes and differ only in *when*.
+ * The hover carries each day's load and start times for exactly that reason — every rung differs
+ * in that text by construction, since it is what `blockShapeKey` is built from.
  */
 export default function AlternativesBar({
   solutions,
@@ -41,7 +46,7 @@ export default function AlternativesBar({
           }`}
           onClick={() => onSelect(index)}
           title={`${describeShapeLoad(solution.events) || 'nothing scheduled'}${
-            index === varietyIndex ? ' — your seed picked this one' : ''
+            index === varietyIndex ? '\n\nYour seed picked this one' : ''
           }`}
         >
           <span className="alternatives-bar__rank">
