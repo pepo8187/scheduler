@@ -50,6 +50,19 @@ describe('findLectureConflicts', () => {
     const selection = buildFullSelection(timetable);
     expect(findLectureConflicts(timetable, selection)).toHaveLength(0);
   });
+
+  it('folds in a reclassified seminar as a lecture, badge and all', () => {
+    const lectureA = event('AA', 'AA', 'lecture', [slot('Út', 720, 830)]);
+    const demo = event('BB/01', 'BB', 'seminar', [slot('Út', 720, 830)]);
+    const timetable = timetableOf([subject('AA', [lectureA], []), subject('BB', [], [demo])]);
+    const selection = buildFullSelection(timetable);
+    selection.BB!.reclassified['BB/01'] = true;
+
+    const conflicts = findLectureConflicts(timetable, selection);
+    expect(conflicts).toHaveLength(1);
+    const codes = [conflicts[0]?.a.subjectCode, conflicts[0]?.b.subjectCode].sort();
+    expect(codes).toEqual(['AA', 'BB']);
+  });
 });
 
 describe('analyzeDayOff — the Tuesday / Quantum Programming trade-off', () => {
@@ -98,6 +111,18 @@ describe('analyzeDayOff — the Tuesday / Quantum Programming trade-off', () => 
     const analysis = analyzeDayOff(timetable, selection, 'Čt');
     expect(analysis.blockers).toHaveLength(0);
     expect(analysis.deadSubjects).toHaveLength(0);
+  });
+
+  it('previews a reclassified seminar as a drop, never as a dead-subject trade-off', () => {
+    const demo = event('BB/01', 'BB', 'seminar', [slot('Pá', 480, 570)]);
+    const timetable = timetableOf([subject('BB', [], [demo])]);
+    const selection = buildFullSelection(timetable);
+    selection.BB!.reclassified['BB/01'] = true;
+
+    const analysis = analyzeDayOff(timetable, selection, 'Pá');
+    expect(analysis.blockers).toHaveLength(0);
+    expect(analysis.deadSubjects).toHaveLength(0);
+    expect(analysis.droppedLectures.map((d) => d.subject.code)).toEqual(['BB']);
   });
 });
 
@@ -166,5 +191,16 @@ describe('analyzeLunch', () => {
 
     const analysis = analyzeLunch(timetable, selection, prefs);
     expect(analysis.deadSubjects.map((d) => d.subject.code).sort()).toEqual(['BB']); // CC's day is blacked out
+  });
+
+  it('flags a reclassified seminar overlapping lunch informationally, never as a dead subject', () => {
+    const demo = event('BB/01', 'BB', 'seminar', [slot('Po', 630, 700)]);
+    const timetable = timetableOf([subject('BB', [], [demo])]);
+    const selection = buildFullSelection(timetable);
+    selection.BB!.reclassified['BB/01'] = true;
+
+    const analysis = analyzeLunch(timetable, selection, lunch());
+    expect(analysis.deadSubjects).toHaveLength(0);
+    expect(analysis.lectureOverlaps.map((o) => o.subject.code)).toEqual(['BB']);
   });
 });

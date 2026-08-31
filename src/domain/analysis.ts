@@ -1,6 +1,7 @@
 import { DAY_LABELS, DAY_ORDER } from './format';
 import { slotDuringLunch } from './lunch';
 import { findOverlaps } from './overlap';
+import { asLecture } from './reclassify';
 import type { CourseEvent, Day, LunchPrefs, Selection, Subject, Timetable } from './types';
 
 /** The five weekdays the day-off toggles apply to. */
@@ -20,6 +21,11 @@ export function findLectureConflicts(timetable: Timetable, selection: Selection)
     if (!subjectSelection?.enabled) continue;
     for (const lecture of subject.lectures) {
       if (subjectSelection.lectures[lecture.id]?.enabled) lectures.push(lecture);
+    }
+    for (const seminar of subject.seminars) {
+      if (subjectSelection.reclassified[seminar.id] && subjectSelection.seminars[seminar.id]) {
+        lectures.push(asLecture(seminar));
+      }
     }
   }
 
@@ -79,8 +85,14 @@ export function analyzeDayOff(timetable: Timetable, selection: Selection, day: D
       else droppedLectures.push({ subject, lecture });
     }
 
-    if (subject.seminars.length === 0) continue;
-    const enabledGroups = subject.seminars.filter((s) => subjectSelection.seminars[s.id]);
+    for (const seminar of subject.seminars) {
+      if (!subjectSelection.reclassified[seminar.id] || !subjectSelection.seminars[seminar.id]) continue;
+      if (seminar.slots.some((s) => s.day === day)) droppedLectures.push({ subject, lecture: seminar });
+    }
+
+    const normalSeminars = subject.seminars.filter((s) => !subjectSelection.reclassified[s.id]);
+    if (normalSeminars.length === 0) continue;
+    const enabledGroups = normalSeminars.filter((s) => subjectSelection.seminars[s.id]);
     if (enabledGroups.length === 0) continue; // already lecture-only by explicit user choice
 
     const survivors = enabledGroups.filter((s) => !s.slots.some((slot) => slot.day === day));
@@ -134,8 +146,15 @@ export function analyzeLunch(timetable: Timetable, selection: Selection, lunch: 
       if (overlapDay) lectureOverlaps.push({ subject, lecture, day: overlapDay });
     }
 
-    if (subject.seminars.length === 0) continue;
-    const enabledGroups = subject.seminars.filter((s) => subjectSelection.seminars[s.id]);
+    for (const seminar of subject.seminars) {
+      if (!subjectSelection.reclassified[seminar.id] || !subjectSelection.seminars[seminar.id]) continue;
+      const overlapDay = seminar.slots.find((slot) => slotDuringLunch(slot, lunch))?.day;
+      if (overlapDay) lectureOverlaps.push({ subject, lecture: seminar, day: overlapDay });
+    }
+
+    const normalSeminars = subject.seminars.filter((s) => !subjectSelection.reclassified[s.id]);
+    if (normalSeminars.length === 0) continue;
+    const enabledGroups = normalSeminars.filter((s) => subjectSelection.seminars[s.id]);
     if (enabledGroups.length === 0) continue; // already lecture-only by explicit user choice
 
     const survivors = enabledGroups.filter((s) => !s.slots.some((slot) => slotDuringLunch(slot, lunch)));

@@ -440,6 +440,39 @@
   opacity: 0.5;
 }
 
+/* Deliberately understated: reclassifying a seminar as a lecture is an edge case, not a
+   primary action, so the button stays near-invisible until hovered or already on. */
+.reclassify-toggle {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.3;
+  filter: grayscale(1);
+  transition: opacity 120ms ease, filter 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+.reclassify-toggle:hover {
+  opacity: 0.75;
+  filter: grayscale(0.3);
+  border-color: var(--ghost-outline);
+}
+
+.reclassify-toggle--on {
+  opacity: 1;
+  filter: none;
+  border-color: var(--primary);
+  background: var(--primary-container);
+}
+
 .teacher-chips {
   display: flex;
   flex-wrap: wrap;

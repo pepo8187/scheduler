@@ -99,6 +99,61 @@ describe('solve — never fails', () => {
   });
 });
 
+describe('solve — reclassified seminars', () => {
+  it('treats a reclassified seminar as fixed: it never competes for the seminar choice, and colliding with another subject\'s lecture costs nothing (unavoidable, like a real lecture)', () => {
+    const lecture = event('AA', 'AA', 'lecture', [slot('Po', 480, 570)]);
+    const demo = event('BB/01', 'BB', 'seminar', [slot('Po', 480, 570)], '01'); // overlaps AA's lecture
+    const timetable = timetableOf([subject('AA', [lecture], []), subject('BB', [], [demo])]);
+    const selection = buildFullSelection(timetable);
+    selection.BB!.reclassified['BB/01'] = true;
+
+    const result = solve(timetable, selection, DEFAULT_PREFS);
+
+    expect(result.solutions[0]?.assignment.seminarChoice.BB).toBeNull(); // not a search choice any more
+    expect(result.solutions[0]?.events.map((e) => e.id).sort()).toEqual(['AA', 'BB/01']);
+    expect(result.solutions[0]?.overlaps[0]?.kind).toBe('lecture-lecture'); // free, not a seminarCollision
+    expect(penaltyExcludingSparseDays(result.solutions[0]!.score)).toBe(0);
+  });
+
+  it('drops a reclassified seminar to honour a day off, exactly like a non-★ lecture', () => {
+    const demo = event('BB/01', 'BB', 'seminar', [slot('Pá', 480, 570)], '01');
+    const timetable = timetableOf([subject('BB', [], [demo])]);
+    const selection = buildFullSelection(timetable);
+    selection.BB!.reclassified['BB/01'] = true;
+
+    const dropped = deriveDroppedLectures(timetable, selection, ['Pá']);
+    expect(dropped.has('BB/01')).toBe(true);
+
+    const prefs: Prefs = { ...DEFAULT_PREFS, daysOff: ['Pá'] };
+    const result = solve(timetable, selection, prefs);
+    expect(result.solutions[0]?.events).toHaveLength(0);
+  });
+
+  it('lets several reclassified groups of the same subject be attended together, not just one', () => {
+    const demoA = event('BB/01', 'BB', 'seminar', [slot('Po', 480, 570)], '01');
+    const demoB = event('BB/02', 'BB', 'seminar', [slot('Út', 480, 570)], '02');
+    const timetable = timetableOf([subject('BB', [], [demoA, demoB])]);
+    const selection = buildFullSelection(timetable);
+    selection.BB!.reclassified['BB/01'] = true;
+    selection.BB!.reclassified['BB/02'] = true;
+
+    const result = solve(timetable, selection, DEFAULT_PREFS);
+    expect(result.solutions[0]?.events.map((e) => e.id).sort()).toEqual(['BB/01', 'BB/02']);
+  });
+
+  it('leaves attendance toggleable independently of the reclassification itself', () => {
+    const demo = event('BB/01', 'BB', 'seminar', [slot('Po', 480, 570)], '01');
+    const timetable = timetableOf([subject('BB', [], [demo])]);
+    const selection = buildFullSelection(timetable);
+    selection.BB!.reclassified['BB/01'] = true;
+    selection.BB!.seminars['BB/01'] = false; // user doesn't want to attend, but it's still a lecture
+
+    const result = solve(timetable, selection, DEFAULT_PREFS);
+    expect(result.solutions[0]?.events).toHaveLength(0);
+    expect(selection.BB!.reclassified['BB/01']).toBe(true);
+  });
+});
+
 describe('solve — lunch block', () => {
   it('excludes a seminar group overlapping lunch when a collision-free alternative exists', () => {
     const lecture = event('AA', 'AA', 'lecture', [slot('Po', 480, 570)]);

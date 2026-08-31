@@ -40,6 +40,7 @@ function buildDefaultSelection(timetable: Timetable): Selection {
       enabled: true,
       lectures: Object.fromEntries(subject.lectures.map((l) => [l.id, { enabled: true, required: false }])),
       seminars: Object.fromEntries(subject.seminars.map((s) => [s.id, true])),
+      reclassified: {},
     };
   }
   return selection;
@@ -74,7 +75,11 @@ function hydrate(): State {
       xml: persisted.xml,
       fileName: persisted.fileName ?? null,
       timetable: parseTimetable(persisted.xml),
-      selection: persisted.selection ?? {},
+      // A subject selection persisted before reclassification existed has no `reclassified`
+      // map — default it to empty rather than leaving it undefined for every reader downstream.
+      selection: Object.fromEntries(
+        Object.entries(persisted.selection ?? {}).map(([code, sel]) => [code, { ...sel, reclassified: sel.reclassified ?? {} }]),
+      ),
       // Shallow-merged onto the defaults so a preference added after a user's last visit
       // (e.g. `lunch`, absent from older persisted state) doesn't come back `undefined`.
       // Nested one level deeper than the rest: a persisted `tuning` from before a knob was
@@ -105,6 +110,7 @@ type Action =
   | { type: 'TOGGLE_LECTURE'; subjectCode: string; lectureId: string }
   | { type: 'TOGGLE_LECTURE_REQUIRED'; subjectCode: string; lectureId: string }
   | { type: 'TOGGLE_SEMINAR'; subjectCode: string; seminarId: string }
+  | { type: 'TOGGLE_SEMINAR_RECLASSIFIED'; subjectCode: string; seminarId: string }
   | { type: 'TOGGLE_TEACHER_GROUPS'; subjectCode: string; teacherId: string }
   | { type: 'ENABLE_ALL_SEMINARS'; subjectCode: string }
   | { type: 'DISABLE_ALL_SEMINARS'; subjectCode: string }
@@ -201,6 +207,21 @@ function reducer(state: State, action: Action): State {
       };
     }
 
+    case 'TOGGLE_SEMINAR_RECLASSIFIED': {
+      const subject = state.selection[action.subjectCode];
+      if (!subject || !(action.seminarId in subject.seminars)) return state;
+      return {
+        ...state,
+        selection: {
+          ...state.selection,
+          [action.subjectCode]: {
+            ...subject,
+            reclassified: { ...subject.reclassified, [action.seminarId]: !subject.reclassified[action.seminarId] },
+          },
+        },
+      };
+    }
+
     case 'TOGGLE_TEACHER_GROUPS': {
       const timetableSubject = state.timetable?.subjects.find((s) => s.code === action.subjectCode);
       const subjectSelection = state.selection[action.subjectCode];
@@ -258,6 +279,7 @@ export interface SchedulerActions {
   toggleLecture: (subjectCode: string, lectureId: string) => void;
   toggleLectureRequired: (subjectCode: string, lectureId: string) => void;
   toggleSeminar: (subjectCode: string, seminarId: string) => void;
+  toggleSeminarReclassified: (subjectCode: string, seminarId: string) => void;
   toggleTeacherGroups: (subjectCode: string, teacherId: string) => void;
   setSeed: (seed: string) => void;
   rerollSeed: () => void;
@@ -315,6 +337,8 @@ export function SchedulerProvider({ children }: { children: ReactNode }) {
       toggleLectureRequired: (subjectCode, lectureId) =>
         dispatch({ type: 'TOGGLE_LECTURE_REQUIRED', subjectCode, lectureId }),
       toggleSeminar: (subjectCode, seminarId) => dispatch({ type: 'TOGGLE_SEMINAR', subjectCode, seminarId }),
+      toggleSeminarReclassified: (subjectCode, seminarId) =>
+        dispatch({ type: 'TOGGLE_SEMINAR_RECLASSIFIED', subjectCode, seminarId }),
       toggleTeacherGroups: (subjectCode, teacherId) =>
         dispatch({ type: 'TOGGLE_TEACHER_GROUPS', subjectCode, teacherId }),
       setSeed: (seed) => dispatch({ type: 'SET_SEED', seed }),
