@@ -4,6 +4,7 @@ import { asLecture } from './reclassify';
 import { hashString, mulberry32, pickFrom, unitFrom } from './random';
 import { resolveAssignment, scoreResolved } from './score';
 import { blockShapeKey, dayLoadKey } from './shape';
+import { collectVariants } from './variants';
 import { assignmentKey, pickVariety, selectDiverse, varietyTolerance, type VarietyPick } from './variety';
 import type { Assignment, CourseEvent, Day, LunchPrefs, Prefs, Selection, Solution, Timetable } from './types';
 
@@ -63,6 +64,12 @@ export interface SolveResult {
    * collapse otherwise hides perfectly good alternatives from the user entirely.
    */
   interchangeable: InterchangeableGroup[];
+  /**
+   * Aligned with `solutions`: the other labellings of each rung's week that the shape dedupe
+   * collapsed into it. Same blocks, same score, different subjects in them — see
+   * `domain/variants.ts`. Empty for a rung that hides nothing.
+   */
+  variants: Solution[][];
 }
 
 interface VariableValue {
@@ -466,10 +473,17 @@ export function solve(timetable: Timetable, selection: Selection, prefs: Prefs, 
   // -week parity stopped collapsing odd/even twins. Dedupe by week shape, coarse first, so the
   // rungs differ in something a student can see. This runs for everyone now, not only with
   // Variety on — a strip nobody can tell apart is useless at every slider position.
-  const solutions = selectDiverse(best, topK, compare, [
-    (solution) => dayLoadKey(solution.events),
-    (solution) => blockShapeKey(solution.events, timetable.hours),
-  ]);
+  const shapeKey = (solution: Solution): string => blockShapeKey(solution.events, timetable.hours);
+  const solutions = selectDiverse(best, topK, compare, [(solution) => dayLoadKey(solution.events), shapeKey]);
+  // What the dedupe collapsed, kept rather than discarded: a rung's other labellings are the
+  // one genuinely interesting thing it hides, and they are already in the pool.
+  const variants = collectVariants(best, solutions, shapeKey, compare);
 
-  return { solutions, provenOptimal: !budgetExceeded, variety: pickVariety(solutions, prefs), interchangeable };
+  return {
+    solutions,
+    provenOptimal: !budgetExceeded,
+    variety: pickVariety(solutions, prefs),
+    interchangeable,
+    variants,
+  };
 }

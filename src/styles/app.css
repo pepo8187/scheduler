@@ -839,6 +839,43 @@
   background: var(--seminar-accent);
 }
 
+/* Other labellings of the week on screen: same blocks, same score, different subjects in them.
+   A chip row rather than a list — the moves are short and there are at most a handful. */
+.shape-variants {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: var(--gap-md);
+}
+
+.shape-variants__label {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.shape-variants__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-size: var(--fs-xs);
+  background: var(--surface-alt);
+  border: 1px solid var(--outline);
+  border-radius: var(--r-pill);
+  cursor: pointer;
+}
+
+.shape-variants__item--active {
+  background: var(--primary-container);
+  border-color: var(--primary);
+}
+
+.shape-variants__more {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 /* --- Variation: seed row, status line, explainer bars --- */
 
 .seed-row {

@@ -7,6 +7,7 @@ import DiagnosticsPanel from './components/results/DiagnosticsPanel';
 import AdvancedPanel from './components/prefs/AdvancedPanel';
 import GapExplainer from './components/results/GapExplainer';
 import ScoreBreakdown from './components/results/ScoreBreakdown';
+import ShapeVariants from './components/results/ShapeVariants';
 import VarietyExplainer from './components/results/VarietyExplainer';
 import VarietyStatus from './components/results/VarietyStatus';
 import SubjectList from './components/sidebar/SubjectList';
@@ -26,15 +27,27 @@ export default function App() {
     actions,
   } = useScheduler();
   const [selectedIndex, setSelectedIndex] = useState(0);
+  /** Which of the current rung's other labellings is on the grid; null is the rung itself. */
+  const [selectedVariant, setSelectedVariant] = useState<number | null>(null);
 
   useEffect(() => {
     // A fresh solve invalidates any previously-selected rank. Land on the rung this student's
     // seed put forward, which is #1 unless Variety is on.
     setSelectedIndex(solveResult?.variety.index ?? 0);
+    setSelectedVariant(null);
   }, [solveResult]);
 
   const solutions = solveResult?.solutions ?? [];
-  const solution = solutions[selectedIndex] ?? solutions[0] ?? null;
+  const base = solutions[selectedIndex] ?? solutions[0] ?? null;
+  // A variant is a sibling solution, not an edit: picking one swaps the whole assignment on the
+  // grid and changes nothing about the ladder it came from.
+  const variants = solveResult?.variants[selectedIndex] ?? [];
+  const solution = (selectedVariant === null ? null : variants[selectedVariant]) ?? base;
+
+  const selectRung = (index: number) => {
+    setSelectedIndex(index);
+    setSelectedVariant(null); // a rung's labellings mean nothing on the next rung
+  };
 
   return (
     <div className="app">
@@ -80,8 +93,17 @@ export default function App() {
                 provenOptimal={solveResult.provenOptimal}
                 selectedIndex={selectedIndex}
                 varietyIndex={solveResult.variety.index}
-                onSelect={setSelectedIndex}
+                onSelect={selectRung}
               />
+              {base && (
+                <ShapeVariants
+                  timetable={timetable}
+                  base={base}
+                  variants={variants}
+                  selected={selectedVariant}
+                  onSelect={setSelectedVariant}
+                />
+              )}
               <VarietyStatus result={solveResult} prefs={prefs} selectedIndex={selectedIndex} />
               {solution && <ScoreBreakdown score={solution.score} />}
               <DiagnosticsPanel
