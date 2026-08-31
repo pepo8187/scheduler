@@ -105,7 +105,6 @@ export default function SubjectCard({ subject }: SubjectCardProps) {
 
           {subject.seminars.length > 0 && (
             <div className="subject-card__seminar-tools">
-              <TeacherChips subjectCode={subject.code} seminars={subject.seminars} />
               <div className="subject-card__reset">
                 <button
                   type="button"
@@ -126,6 +125,7 @@ export default function SubjectCard({ subject }: SubjectCardProps) {
                   Reset groups
                 </button>
               </div>
+              <TeacherChips subjectCode={subject.code} seminars={subject.seminars} />
             </div>
           )}
 
