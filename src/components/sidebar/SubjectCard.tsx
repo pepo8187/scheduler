@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { describeSlots, describeTeachers } from '../../domain/format';
-import { isUnfiltered } from '../../domain/teacherFilter';
+import { isAllCleared, isUnfiltered } from '../../domain/teacherFilter';
 import type { Subject } from '../../domain/types';
 import { useScheduler } from '../../state/schedulerStore';
 import TeacherChips from './TeacherChips';
@@ -69,6 +69,32 @@ export default function SubjectCard({ subject }: SubjectCardProps) {
             );
           })}
 
+          {subject.seminars.length > 0 && (
+            <div className="subject-card__seminar-tools">
+              <TeacherChips subjectCode={subject.code} seminars={subject.seminars} />
+              <div className="subject-card__reset">
+                <button
+                  type="button"
+                  className="button button--ghost button--tiny"
+                  onClick={() => actions.disableAllSeminars(subject.code)}
+                  disabled={isAllCleared(subject.seminars, subjectSelection.seminars)}
+                  title={`Deselect every ${subject.code} seminar group`}
+                >
+                  Deselect groups
+                </button>
+                <button
+                  type="button"
+                  className="button button--ghost button--tiny"
+                  onClick={() => actions.enableAllSeminars(subject.code)}
+                  disabled={isUnfiltered(subject.seminars, subjectSelection.seminars)}
+                  title={`Re-enable every ${subject.code} seminar group`}
+                >
+                  Reset groups
+                </button>
+              </div>
+            </div>
+          )}
+
           {subject.seminars.map((seminar) => (
             <div key={seminar.id} className="event-row event-row--seminar">
               <label className="event-row__checkbox">
@@ -85,21 +111,6 @@ export default function SubjectCard({ subject }: SubjectCardProps) {
               </div>
             </div>
           ))}
-
-          {subject.seminars.length > 0 && (
-            <div className="subject-card__seminar-tools">
-              <TeacherChips subjectCode={subject.code} seminars={subject.seminars} />
-              <button
-                type="button"
-                className="button button--ghost button--tiny subject-card__reset"
-                onClick={() => actions.enableAllSeminars(subject.code)}
-                disabled={isUnfiltered(subject.seminars, subjectSelection.seminars)}
-                title={`Re-enable every ${subject.code} seminar group`}
-              >
-                Reset groups
-              </button>
-            </div>
-          )}
         </div>
       )}
     </div>

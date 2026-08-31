@@ -10,6 +10,11 @@ export function isUnfiltered(seminars: CourseEvent[], enabled: Record<string, bo
   return seminars.length > 0 && seminars.every((s) => enabled[s.id]);
 }
 
+/** True when every one of the subject's groups is already deselected. */
+export function isAllCleared(seminars: CourseEvent[], enabled: Record<string, boolean>): boolean {
+  return seminars.length > 0 && seminars.every((s) => !enabled[s.id]);
+}
+
 /**
  * Decides what a click on a teacher chip does. Pure so the rule can be tested without a DOM.
  *

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyTeacherChipClick, isUnfiltered, seminarIdsForTeacher } from '../teacherFilter';
+import { applyTeacherChipClick, isAllCleared, isUnfiltered, seminarIdsForTeacher } from '../teacherFilter';
 import type { CourseEvent, Teacher } from '../types';
 
 const teacher = (id: string): Teacher => ({ id, name: `Dr ${id}` });
@@ -32,6 +32,16 @@ describe('isUnfiltered', () => {
     expect(isUnfiltered(seminars, allOn())).toBe(true);
     expect(isUnfiltered(seminars, { ...allOn(), g3: false })).toBe(false);
     expect(isUnfiltered([], {})).toBe(false); // no groups at all is not "unfiltered"
+  });
+});
+
+describe('isAllCleared', () => {
+  it('is true only when every group is deselected', () => {
+    const allOff = Object.fromEntries(seminars.map((s) => [s.id, false]));
+    expect(isAllCleared(seminars, allOff)).toBe(true);
+    expect(isAllCleared(seminars, { ...allOff, g3: true })).toBe(false);
+    expect(isAllCleared(seminars, allOn())).toBe(false);
+    expect(isAllCleared([], {})).toBe(false); // no groups at all is not "cleared"
   });
 });
 
