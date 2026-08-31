@@ -3,16 +3,26 @@ import { eventsOverlap } from './overlap';
 import { asLecture } from './reclassify';
 import { hashString, mulberry32, pickFrom, unitFrom } from './random';
 import { resolveAssignment, scoreResolved } from './score';
+import { blockShapeKey, dayLoadKey } from './shape';
 import { assignmentKey, pickVariety, selectDiverse, varietyTolerance, type VarietyPick } from './variety';
 import type { Assignment, CourseEvent, Day, LunchPrefs, Prefs, Selection, Solution, Timetable } from './types';
 
 /**
- * How much wider than `topK` the internal candidate pool grows once Variety is on. The band has
- * to be searched before it can be chosen from, and the strict top ten of a real timetable is
- * routinely ten permutations of one week. A search parameter, not a scoring constant, so it
- * stays here rather than in the Advanced panel.
+ * How much wider than `topK` the internal candidate pool grows.
+ *
+ * The strip cannot show ten different weeks unless the search kept more than ten candidates:
+ * the strict top ten of a real timetable is routinely ten spellings of one week, so deduping it
+ * to distinct shapes would leave rungs empty. Variety needs the same headroom for a different
+ * reason — its band has to be searched before it can be chosen from — which is why one factor
+ * now serves both, applied unconditionally rather than only when the slider is up.
+ *
+ * The cost is a weaker branch-and-bound bound, since the bound is compared against the worst of
+ * the *pool* rather than the worst of the top ten. Measured on the performance guard's heavy
+ * semester (5 subjects, 15–35 groups each) it is a fraction of a second either way, and every
+ * real export is far smaller. A search parameter, not a scoring constant, so it stays here
+ * rather than in the Advanced panel.
  */
-const VARIETY_POOL_FACTOR = 4;
+const POOL_FACTOR = 4;
 
 export interface SolveOptions {
   /** How many best solutions to keep for the alternatives strip. */
@@ -387,11 +397,11 @@ export function solve(timetable: Timetable, selection: Selection, prefs: Prefs, 
   const { variables, interchangeable } = buildVariables(timetable, selection, prefs.daysOff, prefs.lunch, fixed, seed);
   const droppedLectureCost = droppedLectures.size * prefs.tuning.droppedLecturePerEvent;
 
-  // Variety chooses from a band of near-optimal weeks, so that band has to survive the search
-  // first: widen the pool and let the bound keep anything within tolerance of the worst kept.
-  // Both collapse back to today's behaviour at variety 0.
+  // Both the strip's shape-dedupe and Variety's band need more candidates than the strip shows,
+  // so the pool is widened either way; the tolerance additionally lets the bound keep anything
+  // within the band of the worst kept.
   const tolerance = varietyTolerance(prefs);
-  const poolK = tolerance > 0 ? topK * VARIETY_POOL_FACTOR : topK;
+  const poolK = topK * POOL_FACTOR;
 
   const best: Solution[] = [];
   const chosen: (CourseEvent | null)[] = new Array(variables.length).fill(null);
@@ -450,7 +460,16 @@ export function solve(timetable: Timetable, selection: Selection, prefs: Prefs, 
   // The strip stays a truthful ladder — sorted by real score, cheapest first — and variety only
   // decides which rung is put forward. Presenting a re-ordered list instead would have meant
   // showing "#1" above a lower-scoring "#2", and the whole point is that the cost is visible.
-  const solutions = tolerance > 0 ? selectDiverse(best, topK, compare) : best.slice(0, topK);
+  //
+  // Which *candidates* fill the ladder is a separate question, and the answer is no longer "the
+  // strict top ten": those are routinely ten spellings of one week, especially since alternating
+  // -week parity stopped collapsing odd/even twins. Dedupe by week shape, coarse first, so the
+  // rungs differ in something a student can see. This runs for everyone now, not only with
+  // Variety on — a strip nobody can tell apart is useless at every slider position.
+  const solutions = selectDiverse(best, topK, compare, [
+    (solution) => dayLoadKey(solution.events),
+    (solution) => blockShapeKey(solution.events, timetable.hours),
+  ]);
 
   return { solutions, provenOptimal: !budgetExceeded, variety: pickVariety(solutions, prefs), interchangeable };
 }

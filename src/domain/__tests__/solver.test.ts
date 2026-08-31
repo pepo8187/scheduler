@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_PREFS } from '../presets';
 import { parseTimetable } from '../parseTimetable';
 import { computeScore } from '../score';
+import { blockShapeKey, dayLoadKey } from '../shape';
 import { deriveDroppedLectures, solve } from '../solver';
 import type { Assignment, CourseEvent, Prefs, Score, Slot, Subject, Timetable } from '../types';
 import { buildFullSelection } from './selection';
@@ -374,6 +375,47 @@ describe('solve — variation across a cohort', () => {
       }),
     );
     expect(days.size).toBeGreaterThan(1);
+  });
+});
+
+describe('solve — the alternatives strip is deduped by week shape', () => {
+  /**
+   * The dedupe runs for everyone now, not only with Variety on, so the podzim2023 export — no
+   * fortnightly groups, uniform 110-minute slots, the one the app ships as an example — is the
+   * regression to watch: the strip must not get *worse* for the plain default case.
+   */
+  const timetable = parseTimetable(readSampleXml());
+  const selection = buildFullSelection(timetable);
+  const prefs: Prefs = { ...DEFAULT_PREFS, seed: 'AAAA-2222' };
+
+  it('still hands back a full ladder, sorted by real score, cheapest first', () => {
+    const { solutions } = solve(timetable, selection, prefs);
+    expect(solutions).toHaveLength(10);
+    const totals = solutions.map((s) => s.score.total);
+    expect([...totals].sort((a, b) => a - b)).toEqual(totals);
+  });
+
+  it('keeps the strict optimum at the head, where the variety marker and #1 both point', () => {
+    const { solutions } = solve(timetable, selection, prefs);
+    const wide = solve(timetable, selection, prefs, { topK: 60 });
+    expect(solutions[0]!.score.total).toBe(Math.min(...wide.solutions.map((s) => s.score.total)));
+  });
+
+  it('spends its rungs on distinct weeks rather than on relabellings of one', () => {
+    const { solutions } = solve(timetable, selection, prefs);
+    // Day loads are the coarse key: before the dedupe this export's top ten held five of them.
+    const dayLoads = new Set(solutions.map((s) => dayLoadKey(s.events)));
+    expect(dayLoads.size).toBeGreaterThanOrEqual(6);
+    // …and no two rungs are the same week with the labels moved around.
+    const shapes = new Set(solutions.map((s) => blockShapeKey(s.events, timetable.hours)));
+    expect(shapes.size).toBe(solutions.length);
+  });
+
+  it('is stable for a seed and reachable from another one', () => {
+    const once = solve(timetable, selection, prefs).solutions.map((s) => s.score.total);
+    const again = solve(timetable, selection, prefs).solutions.map((s) => s.score.total);
+    expect(again).toEqual(once);
+    expect(solve(timetable, selection, { ...prefs, seed: 'ZZZZ-9999' }).solutions).toHaveLength(10);
   });
 });
 
