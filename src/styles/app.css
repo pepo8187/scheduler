@@ -447,25 +447,23 @@
   margin-top: 4px;
 }
 
-/* Teacher chips and this subject's own reset share a row; the chips take the space and the
-   reset stays pinned to the end, so it reads as acting on the chips beside it. Sits above the
-   seminar rows themselves — with dozens of groups, buried controls below them go unnoticed. */
+/* The group-level actions read top to bottom: reset/deselect the whole list first, then narrow
+   by teacher below. Stacked rather than side by side so neither column gets squeezed to a sliver
+   in the sidebar's width. Sits above the seminar rows themselves — with dozens of groups, buried
+   controls below them go unnoticed. */
 .subject-card__seminar-tools {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--gap-sm);
+  flex-direction: column;
+  gap: 6px;
   margin: 4px 0 6px;
 }
 
 .subject-card__seminar-tools .teacher-chips {
   margin-top: 0;
-  flex: 1;
 }
 
 .subject-card__reset {
   display: flex;
-  flex: 0 0 auto;
   gap: var(--gap-sm);
 }
 
