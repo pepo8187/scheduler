@@ -15,7 +15,8 @@ how-it-works.
 ## What it does
 
 - **Reads the IS export** — the same XML `<rozvrh>` format the school system produces. Drop a
-  file on the sidebar or click **Load sample** to try the bundled `public/sample-timetable.xml`.
+  file on the sidebar or click **Load podzim23** / **Load podzim22** to try the bundled
+  `public/podzim23-timetable.xml` / `public/podzim22-timetable.xml`.
 - **Lets you prune the options** — deselect a whole subject, an individual lecture, or specific
   seminar groups; mark a lecture ★ required; filter a subject's groups by teacher — the first
   chip you click keeps only that teacher, each one after it adds another, and a per-subject
@@ -311,7 +312,8 @@ Light theme by default (warm, earthy, Material You), with a dark mode toggle in 
 
 ```
 docs/PLAN.md                    full implementation plan
-public/sample-timetable.xml     bundled example export
+public/podzim23-timetable.xml   bundled example export (podzim23)
+public/podzim22-timetable.xml   bundled example export (podzim22)
 src/domain/                     pure TypeScript, no React — unit-testable headlessly
   types.ts                        Day, Slot, CourseEvent, Subject, Timetable, Prefs, Selection, Solution
   parseTimetable.ts                XML -> Timetable
@@ -327,7 +329,7 @@ src/domain/                     pure TypeScript, no React — unit-testable head
   __tests__/                       vitest: parser, overlap, analysis, lunch, score, solver (+ real-sample fixture)
 src/state/schedulerStore.tsx    useReducer + Context; persists xml/selection/prefs to localStorage
 src/components/
-  FileDrop.tsx                     drag/drop + "Load sample"
+  FileDrop.tsx                     drag/drop + "Load podzim23"/"Load podzim22"
   sidebar/                         SubjectList, SubjectCard, TeacherChips, UnscheduledTray
   prefs/                           PreferencePanel, DayOffToggles, LunchBreak, PresetBar, AdvancedPanel
   grid/                            WeekGrid, HourRuler, DayRow, EventBlock, Legend

@@ -9,7 +9,7 @@ import { resolve } from 'node:path';
  * turned back into a filesystem path. Vitest always runs with the project root
  * as cwd.
  */
-export const SAMPLE_PATH = resolve(process.cwd(), 'public/sample-timetable.xml');
+export const SAMPLE_PATH = resolve(process.cwd(), 'public/podzim23-timetable.xml');
 
 export function readSampleXml(): string {
   return readFileSync(SAMPLE_PATH, 'utf8');

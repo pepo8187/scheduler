@@ -2,7 +2,7 @@
 
 The app is **entirely client-side**. `npm run build` emits a folder of static files —
 `index.html`, one JS bundle, the solver's Web Worker as its own chunk, a stylesheet, and
-`sample-timetable.xml`. Parsing, the branch-and-bound search, and the scoring all run in the
+`podzim23-timetable.xml` / `podzim22-timetable.xml`. Parsing, the branch-and-bound search, and the scoring all run in the
 visitor's browser; there is no backend, no database, and no process to keep alive. Any host
 that can serve files over HTTP can serve this, including a plain university `public_html`
 directory.
@@ -31,8 +31,8 @@ APP_BASE=/~xlogin/scheduler/ npm run build
 ```
 
 Leading and trailing slashes both matter; `APP_BASE` is joined onto asset names verbatim.
-The same value flows through `import.meta.env.BASE_URL`, which is how the **Load sample**
-button and the Web Worker find their files, so setting it once covers all three.
+The same value flows through `import.meta.env.BASE_URL`, which is how the **Load podzim23** /
+**Load podzim22** buttons and the Web Worker find their files, so setting it once covers all of them.
 
 ## Deploying to a faculty account (FI MU)
 
@@ -96,7 +96,7 @@ way. Use the default base when the site sits at a domain root; a GitHub Pages pr
 | Symptom | Cause |
 | --- | --- |
 | Blank page, 404s for `/assets/…` in the console | Built without `APP_BASE`, or with a value that doesn't match the real path |
-| Page loads, **Load sample** fails | Same cause — the sample resolves against `BASE_URL` |
+| Page loads, **Load podzim23**/**Load podzim22** fails | Same cause — the examples resolve against `BASE_URL` |
 | "Solving…" never finishes | The worker chunk isn't reachable; check `dist/assets/solver.worker-*.js` was copied and is readable |
 | 403 Forbidden | ACLs — step 3 above; the home directory needs `x` for `apachefi`, not just `public_html` |
 | Stale UI after a redeploy | Hashed filenames make this rare; a hard reload clears a cached `index.html` |
