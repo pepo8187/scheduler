@@ -285,7 +285,11 @@ interface SolveResult{ solutions: Solution[];        // best-first, <= topK, nev
                        provenOptimal: boolean;
                        variety: VarietyPick;         // which rung the seed put forward, and its cost
                        interchangeable: InterchangeableGroup[];
-                       variants: Solution[][] }      // per rung: other labellings of the same week
+                       variants: Solution[][];       // per rung: other labellings of the same week
+                       diagnostics: SolveDiagnostics }
+interface SolveDiagnostics { elapsedMs: number;      // wall clock inside solve(), not the debounce
+                       nodesVisited: number;         // DFS nodes visited
+                       fallbackIterations: number }   // >0 only once the node budget was exceeded
 ```
 
 ---
@@ -347,7 +351,8 @@ src/
     switching.ts      what swapping one group would cost; the ghost tiers; what pins cost
     variants.ts       the other labellings a deduped rung stands for, and what differs
     solver.ts         domain construction, DFS + MRV + forward checking + branch & bound, top-K
-    solver.worker.ts  the worker wrapper; answers SolveRequest with SolveResponse
+    solver.worker.ts  the worker wrapper; answers SolveRequest with SolveResponse, relaying
+                      throttled SolveProgress messages while a heavy solve is still running
     variety.ts        tolerance band, day affinity, shape-diverse selection, the presented pick
     random.ts         FNV-1a hash, mulberry32, seeded draws, seed minting, day rankings
     presets.ts        DEFAULT_PREFS and the four preset bundles
@@ -361,7 +366,7 @@ src/
     prefs/     PreferencePanel  DayOffToggles  LunchBreak  PresetBar  VarietyControls  AdvancedPanel
     grid/      WeekGrid  HourRuler  DayRow  EventBlock  Legend  gridTypes
     results/   AlternativesBar  ShapeVariants  ScoreBreakdown  PinStatus  DiagnosticsPanel  GapExplainer
-               VarietyExplainer  VarietyStatus
+               VarietyExplainer  VarietyStatus  SolvePerf
   styles/      theme.css (tokens, light + dark)  app.css
 ```
 
@@ -569,6 +574,17 @@ structure: if exceeded, the solver falls back to randomised-restart hill climbin
 still reproducible; ~2 % restart probability) and the result is labelled **"best found — not
 proven optimal"** via `provenOptimal: false` rather than claiming something it can't prove.
 
+**Diagnosing a slow solve.** `SolveDiagnostics` (`elapsedMs`, `nodesVisited`,
+`fallbackIterations`) rides along on every `SolveResult`, and `SolvePerf.tsx` renders it as a
+small receipt under the Alternatives heading — real numbers, not a vibe, for a report of "this
+feels slow" to be checked against. While the search is still running, `solve()`'s `onProgress`
+option samples every 4096 nodes; `solver.worker.ts` throttles that to roughly 10/second and
+relays it as a `SolveProgress` message, which `schedulerStore` turns into a live timer and
+nodes/s rate next to an *indeterminate* bar. Indeterminate is deliberate: branch-and-bound
+prunes unevenly, so there is no honest total node count to show percent-complete against until
+the search is already done — a bar that pretended otherwise would be lying about how much work
+is left.
+
 ### What fills the ten rungs (`selectDiverse`)
 
 The top-K list the search keeps is **not** what the strip shows. Un-collapsing fortnightly twins
@@ -754,7 +770,13 @@ and knows nothing about cancellation. The store handles that:
   result can never overwrite a newer one.
 - `isSolving` is exposed while a solve is pending, and the previous result stays on screen
   meanwhile rather than flashing blank.
-- **Synchronous fallback** via dynamic `import()` where `Worker` is undefined.
+- `solveStartedAt` is set only once the debounce clears and the worker is actually dispatched —
+  not when `isSolving` first flips true — so a live elapsed timer times the search, not the
+  wait for typing to settle. `solveProgress` carries the latest `SolveProgress` sample and is
+  cleared at the start of every solve, both consumed by `SolvePerf` ([§9](#9-the-solver)).
+- **Synchronous fallback** via dynamic `import()` where `Worker` is undefined. It blocks this
+  thread for the duration, so there is no live progress to show — only the receipt once it
+  returns.
 
 ---
 
@@ -911,7 +933,7 @@ big enough comfort saving. They filter the domain instead.
   25. 10.`). The `p947` groups in the podzim24 fixture are 400-minute slots of exactly this
   kind, and the app currently treats each as a 6 h 40 m *weekly* commitment, badly overstating
   them. Unmodelled; noted at the end of
-  [`docs/plans/01-distinct-shapes.md`](plans/01-distinct-shapes.md), which found it.
+  [`docs/plans/01-distinct-shapes.DONE.md`](plans/01-distinct-shapes.DONE.md), which found it.
 - **Notes that aren't about parity** (overflow rooms for part of a semester, exception dates
   like "kromě 16. 11.") are surfaced on hover and otherwise ignored.
 - **The grid draws Mon–Fri only.** `Day` and the parser tolerate `So`/`Ne`, and day-shaped score

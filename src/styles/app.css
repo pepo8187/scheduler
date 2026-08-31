@@ -805,6 +805,58 @@
   color: var(--text-faint);
 }
 
+/* --- Solve performance --- */
+
+.solve-perf {
+  margin-bottom: var(--gap-md);
+}
+
+.solve-perf__bar {
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: var(--surface-alt);
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+/* Indeterminate, deliberately: branch-and-bound prunes unevenly, so there is no honest total
+   node count to measure percent-complete against until the search is already done. A sweeping
+   highlight says "working" without pretending to know how far along it is. */
+.solve-perf__bar-fill {
+  width: 40%;
+  height: 100%;
+  border-radius: var(--r-pill);
+  background: var(--primary);
+  animation: solve-perf-sweep 1.1s ease-in-out infinite;
+}
+
+@keyframes solve-perf-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+.solve-perf__line {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.solve-perf__line--done {
+  opacity: 0.75;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .solve-perf__bar-fill {
+    animation: none;
+    width: 100%;
+  }
+}
+
 /* --- Results: alternatives, score, diagnostics --- */
 
 .alternatives-bar {

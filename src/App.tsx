@@ -9,6 +9,7 @@ import GapExplainer from './components/results/GapExplainer';
 import PinStatus from './components/results/PinStatus';
 import ScoreBreakdown from './components/results/ScoreBreakdown';
 import ShapeVariants from './components/results/ShapeVariants';
+import SolvePerf from './components/results/SolvePerf';
 import VarietyExplainer from './components/results/VarietyExplainer';
 import VarietyStatus from './components/results/VarietyStatus';
 import SubjectList from './components/sidebar/SubjectList';
@@ -27,6 +28,8 @@ export default function App() {
     pinConflicts,
     solveResult,
     isSolving,
+    solveStartedAt,
+    solveProgress,
     actions,
   } = useScheduler();
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -99,36 +102,41 @@ export default function App() {
             )}
           </section>
 
-          {timetable && solveResult && (
+          {timetable && (solveResult || isSolving) && (
             <section className="panel">
-              <h2 className="panel__title">Alternatives{isSolving && <span className="panel__title-hint"> · optimizing…</span>}</h2>
-              <AlternativesBar
-                solutions={solutions}
-                provenOptimal={solveResult.provenOptimal}
-                selectedIndex={selectedIndex}
-                varietyIndex={solveResult.variety.index}
-                onSelect={selectRung}
-              />
-              {base && (
-                <ShapeVariants
-                  timetable={timetable}
-                  base={base}
-                  variants={variants}
-                  selected={selectedVariant}
-                  onSelect={setSelectedVariant}
-                />
+              <h2 className="panel__title">Alternatives</h2>
+              <SolvePerf isSolving={isSolving} solveStartedAt={solveStartedAt} progress={solveProgress} result={solveResult} />
+              {solveResult && (
+                <>
+                  <AlternativesBar
+                    solutions={solutions}
+                    provenOptimal={solveResult.provenOptimal}
+                    selectedIndex={selectedIndex}
+                    varietyIndex={solveResult.variety.index}
+                    onSelect={selectRung}
+                  />
+                  {base && (
+                    <ShapeVariants
+                      timetable={timetable}
+                      base={base}
+                      variants={variants}
+                      selected={selectedVariant}
+                      onSelect={setSelectedVariant}
+                    />
+                  )}
+                  <VarietyStatus result={solveResult} prefs={prefs} selectedIndex={selectedIndex} />
+                  {solution && <ScoreBreakdown score={solution.score} />}
+                  <PinStatus relief={relief} />
+                  <DiagnosticsPanel
+                    solution={solution}
+                    lectureConflicts={lectureConflicts}
+                    dayOffAnalysis={dayOffAnalysis}
+                    daysOff={prefs.daysOff}
+                    lunchAnalysis={lunchAnalysis}
+                    pinConflicts={pinConflicts}
+                  />
+                </>
               )}
-              <VarietyStatus result={solveResult} prefs={prefs} selectedIndex={selectedIndex} />
-              {solution && <ScoreBreakdown score={solution.score} />}
-              <PinStatus relief={relief} />
-              <DiagnosticsPanel
-                solution={solution}
-                lectureConflicts={lectureConflicts}
-                dayOffAnalysis={dayOffAnalysis}
-                daysOff={prefs.daysOff}
-                lunchAnalysis={lunchAnalysis}
-                pinConflicts={pinConflicts}
-              />
             </section>
           )}
 
