@@ -241,6 +241,7 @@ interface SubjectSelection {
   lectures: Record<string, { enabled: boolean; required: boolean }>;  // ★ = required
   seminars: Record<string, boolean>;
   reclassified: Record<string, boolean>;   // group treated as a lecture — see below
+  pinned: Record<string, boolean>;         // the group the user chose — at most one per subject
 }
 ```
 
@@ -261,6 +262,17 @@ interface SubjectSelection {
   attended whenever it is enabled, and is dropped by a day off exactly like a non-★ lecture.
   `asLecture()` is a shallow clone with `kind: 'lecture'`, so the parsed timetable other views
   read stays untouched.
+- **A group pinned** → the user's *choice*, where `seminars` is only permission. `seminars` says
+  which groups the solver may pick from; `pinned` says which one it must. At most one per
+  subject — pinning a second replaces the first — and a pinned subject contributes **no decision
+  variable**: it is fixed input, and joins the forward-checking list so every other subject
+  prunes against it ([§9](#9-the-solver)).
+  It stays a **seminar**, unlike a reclassified group: it is still the subject's group, so a
+  collision it causes is a seminar collision and is scored as one.
+  Three things un-pin it outright, because each makes the pin a statement about nothing:
+  switching the group off, filtering it away with a teacher chip, reclassifying it. A **hard
+  constraint does not** — a day off or the lunch block overrules the pin for that solve, and
+  `analyzePins` reports it, but the pin survives so it returns when the constraint lifts.
 
 ### Results
 
@@ -272,7 +284,8 @@ interface Score      { total: number; terms: ScoreTerm[] }             // lower 
 interface SolveResult{ solutions: Solution[];        // best-first, <= topK, never empty
                        provenOptimal: boolean;
                        variety: VarietyPick;         // which rung the seed put forward, and its cost
-                       interchangeable: InterchangeableGroup[] }
+                       interchangeable: InterchangeableGroup[];
+                       variants: Solution[][] }      // per rung: other labellings of the same week
 ```
 
 ---
@@ -288,13 +301,15 @@ interface SolveResult{ solutions: Solution[];        // best-first, <= topK, nev
                     │ main thread (useMemo)       │        worker (debounced 150ms)│
                     ▼                             ▼                                │
         analyzeAllDaysOff  findLectureConflicts   solve()                           │
-        analyzeLunch                                │                               │
+        analyzeLunch       analyzePins              │                               │
                     │                               ├─ deriveDroppedLectures        │
-                    │                               ├─ fixedLectures                │
+                    │                               ├─ derivePinnedGroups           │
+                    │                               ├─ fixedLectures (+ pinned)     │
                     │                               ├─ buildVariables  (hard filter,│
                     │                               │    collapse, forward check)   │
-                    │                               ├─ DFS + branch & bound ──▶ topK│
-                    │                               └─ pickVariety / selectDiverse  │
+                    │                               ├─ DFS + branch & bound ──▶ pool│
+                    │                               ├─ selectDiverse / collectVariants
+                    │                               └─ pickVariety                  │
                     ▼                                            │                  │
               diagnostics panel                                  ▼                  │
                                                             SolveResult ────────────┘
@@ -329,6 +344,8 @@ src/
     analysis.ts       pre-flight: day-off blockers/drops/dead subjects, lunch notes, clashes
     score.ts          the objective, per-term breakdown, DEFAULT_TUNING, two-week averaging
     shape.ts          week-shape identity: dayLoadKey, blockShapeKey, the <hodiny> time snap
+    switching.ts      what swapping one group would cost; the ghost tiers; what pins cost
+    variants.ts       the other labellings a deduped rung stands for, and what differs
     solver.ts         domain construction, DFS + MRV + forward checking + branch & bound, top-K
     solver.worker.ts  the worker wrapper; answers SolveRequest with SolveResponse
     variety.ts        tolerance band, day affinity, shape-diverse selection, the presented pick
@@ -343,7 +360,7 @@ src/
     sidebar/   SubjectList  SubjectCard  TeacherChips  UnscheduledTray
     prefs/     PreferencePanel  DayOffToggles  LunchBreak  PresetBar  VarietyControls  AdvancedPanel
     grid/      WeekGrid  HourRuler  DayRow  EventBlock  Legend  gridTypes
-    results/   AlternativesBar  ScoreBreakdown  DiagnosticsPanel  GapExplainer
+    results/   AlternativesBar  ShapeVariants  ScoreBreakdown  PinStatus  DiagnosticsPanel  GapExplainer
                VarietyExplainer  VarietyStatus
   styles/      theme.css (tokens, light + dark)  app.css
 ```
@@ -493,7 +510,9 @@ by term with their defaults shown and modified ones flagged. Two things this mus
 `null`, meaning no seminar). That is the whole search space. Everything else is resolved before
 it starts:
 
-- ★ lectures, subjects without groups, and reclassified groups are **fixed input**.
+- ★ lectures, subjects without groups, reclassified groups and **pinned groups** are **fixed
+  input**. A pinned group is additionally added to the forward-checking list, so every other
+  subject can prune against it before the search begins.
 - Non-★ lecture drops are **derived, not searched** (`deriveDroppedLectures`): they are only
   ever exercised to satisfy a day off, so searching a binary per lecture would double the space
   to no purpose.
@@ -597,6 +616,37 @@ are snapped, since 15:40 and 15:50 share a key and do not share a score. Sorting
 `AlternativesBar` prints the day set on each rung ("Po Út Pá"), with the per-day loads on hover:
 rank and score alone cannot distinguish ten rungs that all read "55".
 
+### …and what a rung hides (`variants.ts`)
+
+Deduping by shape is what made the strip readable and is also what made everything inside a
+shape invisible. Most of that is nothing anyone needs, but one kind is news: the **other
+labellings of the same week**. Same blocks on the grid, provably the same score, a different
+subject at 8am. `collectVariants` keeps the collapsed pool members instead of discarding them —
+the same spirit as `interchangeable`, which records what the *search* collapsed — and
+`ShapeVariants` offers them under the strip. Picking one is a **jump to a sibling solution, not
+an edit**: the whole assignment applies at once, so it needs no state and cannot leave a swap
+half-done.
+
+Bounded by the pool, so an empty list means "none among the candidates kept", not "none".
+Measured on the real exports (five subjects, neutral preferences): 7 of 10 rungs on podzim22
+hide a swap — one of them a five-subject cycle — 4 of 10 on podzim23, none on podzim24.
+
+### What a switch costs (`switching.ts`)
+
+The grid draws every enabled-but-unchosen group as a faint **ghost** strip. `switchCosts` prices
+each: resolve the same assignment with that one value replaced, score it, subtract. Deliberately
+**not a solve** — re-solving with a group forced answers "what is the best week containing this?",
+a different and far costlier question than "what happens to the week I am looking at". Computed
+once per solve in `App` (two surfaces need it), then each ghost is ranked `free` / `costly` /
+`blocked` so a row of forty strips is readable, with the exact number on hover.
+
+The same numbers price the user's pins. `pinRelief` asks whether a pinned subject's own siblings
+hold something better right now — a true **lower bound** on what un-pinning would recover, since
+freeing the subject also lets everything else move, hence the "at least" in the UI. The exact
+figure needs a second full search: measured on podzim22 that is 14.8 s against the real solve's
+14.6 s (the bound is collision-dominated, so even `topK: 1` does not help), which is not a price
+worth paying for one line of text.
+
 ---
 
 ## 10. Variation across a cohort
@@ -684,7 +734,8 @@ clause is there for a reason:
 - `tuning` merged **one level deeper** onto `DEFAULT_TUNING` (see [§8](#8-the-objective-function)).
 - `seed` cannot be defaulted like the rest — falling back to the shared blank would put every
   returning visitor on identical "random" choices — so a real one is minted.
-- `selection[code].reclassified` defaults to `{}` for state saved before that feature existed.
+- `selection[code].reclassified` and `.pinned` default to `{}` for state saved before those
+  features existed (`migrateSelection`).
 
 **The worker.** `solver.worker.ts` is a thin wrapper: it answers whatever it is asked, in order,
 and knows nothing about cancellation. The store handles that:
@@ -741,13 +792,14 @@ curve, and `VarietyExplainer` demonstrates the spread by pushing 400 synthetic s
 
 ## 13. Tests and fixtures
 
-`npm run test` — **240 tests across 14 files** (vitest + jsdom, so the parser gets the same
+`npm run test` — **292 tests across 18 files** (vitest + jsdom, so the parser gets the same
 native `DOMParser` the browser uses). `npm run build` runs `tsc --noEmit` first.
 
 The suites mirror the domain modules: `parseTimetable`, `overlap`, `parity`, `lunch`,
-`analysis`, `score`, `shape`, `solver`, `variety`, `random`, `teacherFilter`, `presets`,
-`format`, plus `fixture.test.ts` pinning the bundled sample's shape. Three kinds of test are
-load-bearing rather than routine:
+`analysis`, `score`, `shape`, `switching`, `variants`, `pinning`, `solver`, `variety`, `random`,
+`teacherFilter`, `presets`, `format`, plus `fixture.test.ts` pinning the bundled sample's shape
+and `state/schedulerStore.test.ts` covering the reducer and the persisted-state migration.
+Three kinds of test are load-bearing rather than routine:
 
 - **The brute-force cross-check** in `solver.test.ts` proves the pruned search finds the true
   optimum — including under non-default tuning, which is what protects rule 4.
@@ -831,12 +883,16 @@ big enough comfort saving. They filter the domain instead.
 
 ## 15. Known gaps and open work
 
-- **What a shape hides is not yet reachable.** The strip now shows one representative per
-  distinct week shape ([§9](#9-the-solver)), which by design makes everything *inside* a shape
-  invisible: the other labellings of the same week (a permutation, in 12–35 % of shapes) and the
-  other groups of a subject the grid already draws as inert "ghost" blocks. Seeing and acting on
-  those is [`docs/plans/02-choosing-within-a-shape.md`](plans/02-choosing-within-a-shape.md),
-  written up and **unstarted**; it is the half that needs new selection state.
+- **What a pin really costs is a lower bound, not the figure.** `pinRelief` reports the best
+  single swap inside the pinned subject, because the exact answer needs a second full search and
+  on podzim22 that doubles a 15-second solve. Worth revisiting if the search itself gets faster.
+- **The variant list is bounded by the search pool** (`topK × POOL_FACTOR`), so on a timetable
+  with hundreds of tied weeks it reports the labellings that survived to the pool rather than
+  every one that exists. An empty list means "none among the candidates kept".
+- **A heavy fortnightly export is slow.** podzim2022 with five subjects takes ~15 s to solve —
+  un-collapsing odd/even twins roughly doubled every domain, and the branch-and-bound bound is
+  collision-dominated, so comfort terms prune almost nothing. Unrelated to the strip work
+  (measured identical before and after) but it is the ceiling everything else runs into.
 - **Block-taught sessions are modelled as weekly.** A third cadence exists beyond weekly and
   fortnightly: sessions taught on a handful of named dates (`pouze Pá 4. 10., Pá 18. 10. a Pá
   25. 10.`). The `p947` groups in the podzim24 fixture are 400-minute slots of exactly this

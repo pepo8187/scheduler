@@ -42,6 +42,9 @@ algorithms, the invariants and the reasoning behind them — is in
   next-best schedules and see how their score breaks down against the one you're looking at. Each
   rung is a *different week*, not a different spelling of the same one, and says which days it
   uses. See *Ten different weeks* below.
+- **Lets you overrule it.** Every group the optimizer passed over is drawn on the grid as a
+  faint strip that says, on hover, exactly what taking it would cost in points — and one click
+  takes it. See *Choosing a group yourself* below.
 - **Doesn't hand your whole year the same schedule** — a personal *variation seed* decides which
   of the equally-good answers you get, so four hundred people taking the same first-semester
   subjects don't all get sent to seminar group 01. Free by default; an optional **Variety**
@@ -265,6 +268,42 @@ Three things the strip still guarantees, unchanged: **#1 is the strict optimum**
 **sorted by real score**, and every rung is **the best-scoring member of its shape** — never an
 arbitrary one, so a rung can't hide a better week inside it.
 
+### Choosing a group yourself
+
+The optimizer proposes; you decide. Two ways in, for two different things.
+
+**The faint strips on the grid are the groups it passed over.** Hover one and it tells you what
+it is, who teaches it, whether it is fortnightly — and the number that actually settles it:
+
+> +38 points if you switched to this · same score as your current group · would collide with
+> another class
+
+They're ranked by that number, so the free swaps stand out and the impossible ones fade back.
+**Click one and it's yours.** That group is now pinned: the optimizer stops choosing for that
+subject and works around your choice instead. Pinned groups are marked 📌 on the grid and in
+the sidebar, one click un-pins, and they're saved with the rest of your preferences.
+
+Pinning fights the optimizer, by design — so the app says what it is costing you, rather than
+leaving you to wonder why the week got worse. The line under the score names the pin and a
+floor on what un-pinning would win back. A floor, not the exact figure: the precise answer needs
+a whole second search, and on the heaviest real export that doubles a fifteen-second solve for
+one line of text.
+
+A pin never beats a **hard constraint**. Take Friday off and a pinned Friday group has to lose —
+but it loses out loud, in the diagnostics, and the pin comes back when you put Friday back.
+
+**Under the alternatives strip, the same week with the labels moved.** Deduping the strip by
+shape (above) means each rung stands for every week with the same blocks — including the ones
+where two subjects trade slots. Those are worth seeing: identical grid, identical score, but a
+different subject at 8am, which is not a detail everyone is indifferent to.
+
+> Same week, also available as: **IB015** Čt 08:00-09:50 · **IB000** Po 10:00-11:50
+
+Picking one is a jump to a sibling schedule, not an edit — the whole week applies at once, so
+there is no half-finished swap to get stuck in, and nothing to undo but clicking *as ranked*.
+The list is drawn from the candidates the search kept, so an empty one means none of those, not
+none at all.
+
 ### Variation — why you aren't handed everyone else's schedule
 
 Up to four hundred people in a first semester take the exact same subjects. Feed the same export
@@ -393,22 +432,31 @@ src/domain/                     pure TypeScript, no React — unit-testable head
   types.ts                        Day, Slot, CourseEvent, Subject, Timetable, Prefs, Selection, Solution
   parseTimetable.ts                XML -> Timetable
   overlap.ts                       interval overlap + lecture-lecture vs seminar classification
-  analysis.ts                      day-off & lunch pre-flight: blockers, drops, dead-subject trade-offs
+  parity.ts                        fortnightly seminars: note parsing, coincidence, per-week views
+  reclassify.ts                    asLecture(): treat a seminar group as lecture-like
+  analysis.ts                      day-off, lunch & pin pre-flight: blockers, drops, dead-subject trade-offs
   lunch.ts                         effective per-day lunch window + slot-overlaps-lunch check
   score.ts                         the objective, its per-term breakdown, and DEFAULT_TUNING
+  shape.ts                         week-shape identity: day loads, block shapes, the <hodiny> time snap
+  switching.ts                     what swapping one group would cost; ghost tiers; what pins cost
+  variants.ts                      the other labellings a deduped rung stands for
+  variety.ts                       the tolerance band, day affinity, shape-diverse selection
+  random.ts                        seeded hashing, PRNG, seed minting, per-seed day rankings
   solver.ts                        MRV/forward-checking/branch-and-bound DFS, group collapsing, top-10, node-budget fallback
   solver.worker.ts                 runs solve() off the main thread
   presets.ts                       default prefs + the four one-click bundles
   teacherFilter.ts                 teacher-chip selection rule: first click exclusive, the rest additive
   format.ts                        minutes<->"HH:MM", day labels, slot/teacher/room descriptions
-  __tests__/                       vitest: parser, overlap, analysis, lunch, score, solver (+ real-sample fixture)
+  __tests__/                       vitest: parser, overlap, analysis, lunch, score, shape, switching,
+                                   variants, pinning, solver, variety (+ real-sample fixtures)
 src/state/schedulerStore.tsx    useReducer + Context; persists xml/selection/prefs to localStorage
 src/components/
   FileDrop.tsx                     drag/drop + "Load podzim23"/"Load podzim22"
   sidebar/                         SubjectList, SubjectCard, TeacherChips, UnscheduledTray
   prefs/                           PreferencePanel, DayOffToggles, LunchBreak, PresetBar, AdvancedPanel
   grid/                            WeekGrid, HourRuler, DayRow, EventBlock, Legend
-  results/                         AlternativesBar, ScoreBreakdown, DiagnosticsPanel, GapExplainer
+  results/                         AlternativesBar, ShapeVariants, ScoreBreakdown, PinStatus,
+                                   DiagnosticsPanel, GapExplainer
   ThemeToggle.tsx
 src/styles/theme.css            every colour, radius and shadow token, light + dark
 src/styles/app.css              layout and every component's styling
