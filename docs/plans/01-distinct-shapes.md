@@ -72,8 +72,9 @@ one block-shape, across three selections: **0.000000, 0.000000, 0.000000.**
 subjects trading slots): **28/242, 98/276, 94/298** across three selections — 12–35%. Plan 2
 surfaces these; this plan only has to avoid treating them as different weeks.
 
-**3. Near-identical times are real, and the podzim2024 export contains them.** Two slots that
-overlap at near-identical but unequal times:
+**3. Near-identical times are real, and the podzim2024 export
+(`fixtures/timetables/podzim24-timetable.xml`) contains them.** Two slots that overlap at
+near-identical but unequal times:
 
 | | |
 |---|---|
@@ -172,11 +173,12 @@ committing to it — `solver.test.ts`'s performance guard is the tripwire.
 
 ## Steps
 
-**0. Add the podzim2024 fixture.** The `CORE033` 15:40-vs-15:50 case is the only real evidence
-for the snapping rule and the only way to test it against real data. Copy the user's export to
-`public/podzim24-timetable.xml` and add a third button in
-`src/components/FileDrop.tsx` alongside the existing two. Ask the user for the file if it is
-not already in the repo.
+**0. Nothing to do — the fixture is already in the repo.** The `CORE033` 15:40-vs-15:50 case
+is the only real evidence for the snapping rule, and it lives at
+`fixtures/timetables/podzim24-timetable.xml`. It is deliberately **not** in `public/`: Vite
+copies that directory into the build, and this export is for testing, not an in-page example.
+Read it with `readFileSync(resolve(process.cwd(), 'fixtures/timetables/podzim24-timetable.xml'), 'utf8')`.
+See `fixtures/timetables/README.md` for what else it exercises.
 
 **1. `domain/shape.ts` (new).**
 - `canonicalTime(minutes, hours)` — snap to the nearest `<hodiny>` boundary.
