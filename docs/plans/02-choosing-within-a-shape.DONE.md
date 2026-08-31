@@ -1,7 +1,8 @@
 # Plan 2 — Choosing within a shape
 
-**Status:** **done.** All five steps landed; what shipped and where it differs from this plan is
-recorded at the end under *What shipped*. Depended on Plan 1 (`01-distinct-shapes.md`), also done.
+**✅ STATUS: DONE — already implemented.** All five steps landed; what shipped and where it
+differs from this plan is recorded at the end under *What shipped*. Depended on Plan 1
+(`01-distinct-shapes.DONE.md`), also done.
 
 **Scope:** the interactive half — letting a user see what else could occupy a slot and act on
 it. Adds new selection state, which Plan 1 deliberately does not.

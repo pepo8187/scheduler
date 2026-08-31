@@ -14,7 +14,7 @@ import type { Solution, Timetable } from './types';
  *
  * Picking one is a **jump to a sibling solution, not an edit**: the whole assignment is applied
  * at once, so it can never produce the half-finished state a per-block click would (see
- * `docs/plans/02-choosing-within-a-shape.md` on why a swap is not expressible as one click).
+ * `docs/plans/02-choosing-within-a-shape.DONE.md` on why a swap is not expressible as one click).
  * That is why nothing here writes any state.
  *
  * The candidates are already in hand: they are the pool members the strip's dedupe collapsed

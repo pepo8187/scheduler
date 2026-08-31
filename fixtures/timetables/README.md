@@ -29,7 +29,7 @@ faculties:
 | `MA018`, `PB007/01` | St 14:00–**15:50** — 110 min |
 
 This is the case that motivates canonicalising times before comparing week shapes
-(`docs/plans/01-distinct-shapes.md`).
+(`docs/plans/01-distinct-shapes.DONE.md`).
 
 **…alongside same-start pairs that must *not* be treated as equal**, which is what makes it a
 real test rather than an illustration:
@@ -45,7 +45,7 @@ real test rather than an illustration:
 taught on three specific dates** — `pouze Pá 4. 10., Pá 18. 10. a Pá 25. 10.` — not weekly at
 all. The app currently models each as a 6h40m *weekly* commitment, which badly overstates
 them. A third cadence beyond weekly and fortnightly, and unmodelled; see the note at the end
-of `docs/plans/01-distinct-shapes.md`.
+of `docs/plans/01-distinct-shapes.DONE.md`.
 
 **Compound parity notes.** Its two alternating-week notes append a make-up date to the
 fortnightly pattern — `každou sudou středu 8:00–9:50, … a St 4. 12. 8:00–9:50`. `parseNoteParity`

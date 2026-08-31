@@ -1,11 +1,12 @@
 # Plan 1 — Distinct week shapes in the alternatives strip
 
-**Status:** **done.** Landed as `domain/shape.ts` + a hierarchical `selectDiverse`, on by
-default for every user. What was built and how it differs from this plan is recorded at the end
-under *What shipped*. Depended on the alternating-week parity work (merged, PR #14).
+**✅ STATUS: DONE — already implemented.** Landed as `domain/shape.ts` + a hierarchical
+`selectDiverse`, on by default for every user. What was built and how it differs from this plan
+is recorded at the end under *What shipped*. Depended on the alternating-week parity work
+(merged, PR #14).
 
 **Scope:** presentation only. No new selection state, no new user interaction. Plan 2
-(`02-choosing-within-a-shape.md`) builds the interactive half on top of what this one
+(`02-choosing-within-a-shape.DONE.md`) builds the interactive half on top of what this one
 establishes, so land this first.
 
 ---

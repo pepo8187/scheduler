@@ -933,7 +933,7 @@ big enough comfort saving. They filter the domain instead.
   25. 10.`). The `p947` groups in the podzim24 fixture are 400-minute slots of exactly this
   kind, and the app currently treats each as a 6 h 40 m *weekly* commitment, badly overstating
   them. Unmodelled; noted at the end of
-  [`docs/plans/01-distinct-shapes.md`](plans/01-distinct-shapes.md), which found it.
+  [`docs/plans/01-distinct-shapes.DONE.md`](plans/01-distinct-shapes.DONE.md), which found it.
 - **Notes that aren't about parity** (overflow rooms for part of a semester, exception dates
   like "kromě 16. 11.") are surfaced on hover and otherwise ignored.
 - **The grid draws Mon–Fri only.** `Day` and the parser tolerate `So`/`Ne`, and day-shaped score
