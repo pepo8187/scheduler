@@ -73,7 +73,7 @@ export interface Timetable {
 }
 
 // ---------------------------------------------------------------------------
-// Preferences — the user-facing control surface (docs/PLAN.md § Preferences)
+// Preferences — the user-facing control surface (docs/ARCHITECTURE.md § The objective function)
 // ---------------------------------------------------------------------------
 
 export interface DayWindow {

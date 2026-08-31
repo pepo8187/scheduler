@@ -9,8 +9,9 @@ You narrow the candidates (keep only the groups taught by the teacher you want, 
 you aren't taking), state your preferences, and the optimizer searches the remaining
 combinations for the schedule that fits you best.
 
-Full design rationale lives in [`docs/PLAN.md`](docs/PLAN.md); this file is the practical
-how-it-works.
+This file is the practical how-it-works. The full reference — the domain model, the
+algorithms, the invariants and the reasoning behind them — is in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## What it does
 
@@ -49,7 +50,7 @@ how-it-works.
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm run test     # unit tests (vitest + jsdom) — 90 tests across parser/overlap/analysis/lunch/score/solver
+npm run test     # unit tests (vitest + jsdom) — 213 tests across 13 domain suites
 npm run build    # typecheck + production build
 ```
 
@@ -122,7 +123,7 @@ list as well as on the week itself; the export's own wording is on hover.
 
 ## The scoring model
 
-Every candidate schedule gets one number — lower is better — built from six independent
+Every candidate schedule gets one number — lower is better — built from seven independent
 penalty terms (`src/domain/score.ts`), weighted so more important things always win:
 
 | Term | What it penalises | Weight |
@@ -348,7 +349,7 @@ Light theme by default (warm, earthy, Material You), with a dark mode toggle in 
 ## Layout
 
 ```
-docs/PLAN.md                    full implementation plan
+docs/ARCHITECTURE.md            architecture and domain reference
 public/podzim23-timetable.xml   bundled example export (podzim23)
 public/podzim22-timetable.xml   bundled example export (podzim22)
 src/domain/                     pure TypeScript, no React — unit-testable headlessly

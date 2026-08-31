@@ -127,8 +127,8 @@ listing the whole week — the shape is identical by definition, so only the lab
    treats a pinned group as fixed → grid and sidebar markers → un-pin affordance →
    diagnostics for a pin a hard constraint forbids.
 4. **Click-to-apply on a ghost.** The payoff of step 3: clicking a ghost pins that group.
-5. **Docs.** README needs a short section; `docs/PLAN.md` needs `pinned` added to the
-   Selection-state block (~line 506).
+5. **Docs.** README needs a short section; `docs/ARCHITECTURE.md` needs `pinned` added to the
+   `SubjectSelection` block and its semantics list in § Domain model.
 
 Steps 1 and 2 are safe and self-contained. Step 3 is the one that changes the domain model —
 give it its own commit.
