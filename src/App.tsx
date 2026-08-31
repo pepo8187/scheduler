@@ -97,7 +97,7 @@ export default function App() {
           <section className="panel panel--grow">
             <h2 className="panel__title">Week</h2>
             {timetable ? (
-              <WeekGrid timetable={timetable} selection={selection} solution={solution} />
+              <WeekGrid timetable={timetable} selection={selection} prefs={prefs} solution={solution} />
             ) : (
               <p className="placeholder">The week grid renders here.</p>
             )}

@@ -1,5 +1,6 @@
 import { describeTeachers, formatMinutes } from '../../domain/format';
 import { describeParity, PARITY_LABEL } from '../../domain/parity';
+import { describeSwitchCost, switchTier, type SwitchCost } from '../../domain/switching';
 import type { CourseEvent, Slot } from '../../domain/types';
 
 export type CollisionKind = 'lecture-lecture' | 'seminar';
@@ -14,6 +15,8 @@ interface EventBlockProps {
   height: number;
   collisionKind?: CollisionKind;
   ghost?: boolean;
+  /** Ghosts only: what taking this group would cost, priced by `WeekGrid`. */
+  switchCost?: SwitchCost;
 }
 
 export default function EventBlock({
@@ -26,6 +29,7 @@ export default function EventBlock({
   height,
   collisionKind,
   ghost,
+  switchCost,
 }: EventBlockProps) {
   const total = maxHour - minHour;
   const left = ((slot.start - minHour) / total) * 100;
@@ -38,6 +42,9 @@ export default function EventBlock({
     collisionKind === 'seminar' && 'event-block--clash-seminar',
     slot.parity && `event-block--${slot.parity}`,
     ghost && 'event-block--ghost',
+    // A ghost row can run to dozens of strips. Ranking them by what they'd cost is what makes
+    // it readable: the free swaps stand out, the ones that would collide recede.
+    ghost && switchCost && `event-block--ghost-${switchTier(switchCost)}`,
   ]
     .filter(Boolean)
     .join(' ');
@@ -48,12 +55,14 @@ export default function EventBlock({
   // pondělí ..."), and is the authority behind the badge — worth showing verbatim on hover.
   // Rendered as text: a note can carry HTML anchor markup for room links.
   const cadence = describeParity(slot.parity);
+  // The number that makes a ghost worth reading rather than merely visible.
+  const cost = ghost && switchCost ? describeSwitchCost(switchCost) : '';
 
   return (
     <div
       className={classNames}
       style={{ left: `${left}%`, width: `${width}%`, top, height }}
-      title={`${event.id} ${subjectName}\n${formatMinutes(slot.start)}-${formatMinutes(slot.end)}${cadence ? ` — ${cadence}` : ''}${teachers ? `\n${teachers}` : ''}${rooms ? `\n${rooms}` : ''}${slot.note ? `\n\n${slot.note}` : ''}`}
+      title={`${event.id} ${subjectName}\n${formatMinutes(slot.start)}-${formatMinutes(slot.end)}${cadence ? ` — ${cadence}` : ''}${teachers ? `\n${teachers}` : ''}${rooms ? `\n${rooms}` : ''}${cost ? `\n\n${cost}` : ''}${slot.note ? `\n\n${slot.note}` : ''}`}
     >
       {!ghost && (
         <>

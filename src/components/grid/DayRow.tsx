@@ -79,6 +79,7 @@ export default function DayRow({ day, minHour, maxHour, hours, blocks, ghostBloc
             top={mainHeight + 12 + lane * (GHOST_HEIGHT + GHOST_GAP)}
             height={GHOST_HEIGHT}
             ghost
+            switchCost={block.switchCost}
           />
         ))}
       </div>

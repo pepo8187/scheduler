@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { DAY_ORDER } from '../../domain/format';
 import { slotsOverlap, type Overlap } from '../../domain/overlap';
-import type { CourseEvent, Day, Selection, Slot, Solution, Timetable } from '../../domain/types';
+import { switchCosts } from '../../domain/switching';
+import type { CourseEvent, Day, Prefs, Selection, Slot, Solution, Timetable } from '../../domain/types';
 import DayRow from './DayRow';
 import type { DayBlockInfo } from './gridTypes';
 import HourRuler from './HourRuler';
@@ -24,10 +25,11 @@ function collisionKindForSlot(event: CourseEvent, slot: Slot, overlaps: Overlap[
 interface WeekGridProps {
   timetable: Timetable;
   selection: Selection;
+  prefs: Prefs;
   solution: Solution | null;
 }
 
-export default function WeekGrid({ timetable, selection, solution }: WeekGridProps) {
+export default function WeekGrid({ timetable, selection, prefs, solution }: WeekGridProps) {
   const subjectNames = useMemo(() => new Map(timetable.subjects.map((s) => [s.code, s.name])), [timetable]);
 
   const blocksByDay = useMemo(() => {
@@ -48,6 +50,16 @@ export default function WeekGrid({ timetable, selection, solution }: WeekGridPro
     return byDay;
   }, [solution, subjectNames]);
 
+  /**
+   * What every unchosen group would cost, priced once per solution rather than per hover.
+   * A hover has to answer instantly and a hover-triggered solve would not — and it would answer
+   * the wrong question anyway (see `domain/switching.ts`). One pass over a few hundred groups.
+   */
+  const costs = useMemo(
+    () => (solution ? switchCosts(timetable, selection, prefs, solution) : new Map()),
+    [timetable, selection, prefs, solution],
+  );
+
   // Unselected candidate groups: enabled but not chosen, rendered as faint outlines
   // so it stays visible what the optimizer passed over.
   const ghostsByDay = useMemo(() => {
@@ -62,13 +74,13 @@ export default function WeekGrid({ timetable, selection, solution }: WeekGridPro
         if (subjectSelection.reclassified[seminar.id]) continue; // fixed as a lecture, not a candidate
         for (const slot of seminar.slots) {
           const list = byDay.get(slot.day) ?? [];
-          list.push({ event: seminar, slot, subjectName: subject.name });
+          list.push({ event: seminar, slot, subjectName: subject.name, switchCost: costs.get(seminar.id) });
           byDay.set(slot.day, list);
         }
       }
     }
     return byDay;
-  }, [solution, selection, timetable]);
+  }, [solution, selection, timetable, costs]);
 
   return (
     <div className="week-grid">

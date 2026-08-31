@@ -1327,9 +1327,29 @@
   border-left: 1px dashed var(--seminar-accent);
   box-shadow: none;
   opacity: 0.55;
-  pointer-events: none;
+  /* Ghosts used to be inert decoration, so they took no pointer events at all — which also
+     meant their tooltip never fired. They now carry what switching to them would cost, which
+     is only reachable on hover. */
+  pointer-events: auto;
+  cursor: help;
   padding: 0 6px;
   justify-content: center;
+}
+
+/* Ranked by what the switch would cost, so a row of forty strips reads at a glance: the free
+   ones step forward, the ones that would land on top of another class recede. Never the only
+   signal — the exact number is on hover, and the tier is named there too. */
+.event-block--ghost-free {
+  opacity: 1;
+  border-style: solid;
+}
+
+.event-block--ghost-costly {
+  opacity: 0.55;
+}
+
+.event-block--ghost-blocked {
+  opacity: 0.2;
 }
 
 .event-block__warning {
