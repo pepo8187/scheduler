@@ -71,6 +71,7 @@ export default function DayRow({ day, minHour, maxHour, hours, blocks, ghostBloc
             height={BLOCK_HEIGHT}
             collisionKind={block.collisionKind as CollisionKind | undefined}
             pinned={block.pinned}
+            onUnpin={block.pinned && onPin ? () => onPin(block.event.subjectCode, block.event.id) : undefined}
           />
         ))}
         {ghostPlaced.map(({ block, lane }) => (
