@@ -1516,6 +1516,25 @@
   font-size: var(--fs-xs);
 }
 
+/* The pin badge doubles as the un-pin control right where the eye already looks for it, instead
+   of sending the user hunting for the sidebar toggle. */
+.event-block__pin--button {
+  z-index: 1;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+  appearance: none;
+}
+
+.event-block__pin--button:hover,
+.event-block__pin--button:focus-visible {
+  transform: scale(1.15);
+  outline: none;
+}
+
 /* The marker sits in the top-left corner, where the course code starts — indent the code out
    from under it, the same way the ⚠ badge already shifts the parity chip on the right. */
 .event-block--pinned .event-block__code {

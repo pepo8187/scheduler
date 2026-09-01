@@ -21,6 +21,8 @@ interface EventBlockProps {
   pinned?: boolean;
   /** Makes the block a button. Ghosts use it to pin the group they stand for. */
   onActivate?: () => void;
+  /** Pinned blocks only: makes the 📌 badge itself a button that hands the choice back to the optimizer. */
+  onUnpin?: () => void;
 }
 
 export default function EventBlock({
@@ -36,6 +38,7 @@ export default function EventBlock({
   switchCost,
   pinned,
   onActivate,
+  onUnpin,
 }: EventBlockProps) {
   const total = maxHour - minHour;
   const left = ((slot.start - minHour) / total) * 100;
@@ -66,7 +69,13 @@ export default function EventBlock({
   // The number that makes a ghost worth reading rather than merely visible.
   const cost = ghost && switchCost ? describeSwitchCost(switchCost) : '';
 
-  const detail = `${event.id} ${subjectName}\n${formatMinutes(slot.start)}-${formatMinutes(slot.end)}${cadence ? ` — ${cadence}` : ''}${teachers ? `\n${teachers}` : ''}${rooms ? `\n${rooms}` : ''}${cost ? `\n\n${cost}` : ''}${onActivate ? '\nClick to choose this group' : ''}${pinned ? '\n\nYou chose this group — the optimizer is leaving it alone. Un-pin it in the sidebar.' : ''}${slot.note ? `\n\n${slot.note}` : ''}`;
+  const pinnedHint = pinned
+    ? `\n\nYou chose this group — the optimizer is leaving it alone. ${
+        onUnpin ? 'Click the 📌 to hand the choice back to the optimizer.' : 'Un-pin it in the sidebar.'
+      }`
+    : '';
+
+  const detail = `${event.id} ${subjectName}\n${formatMinutes(slot.start)}-${formatMinutes(slot.end)}${cadence ? ` — ${cadence}` : ''}${teachers ? `\n${teachers}` : ''}${rooms ? `\n${rooms}` : ''}${cost ? `\n\n${cost}` : ''}${onActivate ? '\nClick to choose this group' : ''}${pinnedHint}${slot.note ? `\n\n${slot.note}` : ''}`;
 
   // A ghost that can be acted on is a real button, not a div with a click handler: it has to be
   // reachable by keyboard, and the ghost row is otherwise the one part of the grid that isn't.
@@ -81,7 +90,18 @@ export default function EventBlock({
     >
       {!ghost && (
         <>
-          {pinned && (
+          {pinned && onUnpin && (
+            <button
+              type="button"
+              className="event-block__pin event-block__pin--button"
+              onClick={onUnpin}
+              title="Un-pin — hand the choice back to the optimizer"
+              aria-label={`Un-pin ${event.id} — hand the choice back to the optimizer`}
+            >
+              📌
+            </button>
+          )}
+          {pinned && !onUnpin && (
             <span className="event-block__pin" aria-hidden="true">
               📌
             </span>
